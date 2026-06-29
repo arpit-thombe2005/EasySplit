@@ -22,7 +22,7 @@ final groupSettlementsProvider =
 
 // ── Simplified Debts (Minimum Cash Flow Engine) ────────────────────
 
-final simplifiedDebtsProvider =
+final groupSimplifiedDebtsProvider =
     Provider.family<List<SimplifiedDebt>, String>((ref, groupId) {
   final group = ref.watch(groupDetailProvider(groupId)).valueOrNull;
   final expenses = ref.watch(groupExpensesProvider(groupId)).valueOrNull ?? [];

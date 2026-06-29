@@ -671,7 +671,7 @@ class _SettlementSummaryCard extends ConsumerWidget {
     final currentUserId = user?.id ?? '';
     final symbol = currency == 'INR' ? '₹' : currency;
 
-    final debts = ref.watch(simplifiedDebtsProvider(groupId));
+    final debts = ref.watch(groupSimplifiedDebtsProvider(groupId));
     final settlementsAsync = ref.watch(groupSettlementsProvider(groupId));
 
     return Column(
