@@ -17,8 +17,6 @@ class GroupAnalyticsScreen extends ConsumerStatefulWidget {
 
 class _GroupAnalyticsScreenState extends ConsumerState<GroupAnalyticsScreen> {
   String _selectedFilter = 'all';
-  int _touchedCategoryIndex = -1;
-  int _touchedMemberIndex = -1;
 
   @override
   Widget build(BuildContext context) {
@@ -77,9 +75,9 @@ class _GroupAnalyticsScreenState extends ConsumerState<GroupAnalyticsScreen> {
                 crossAxisCount: 2,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 1.6,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 2.3,
                 children: [
                   _metricCard(theme, cs, 'Total Expenses', '$currencySymbol${(overview['totalExpenses'] ?? 0).toStringAsFixed(2)}', Icons.payments_outlined),
                   _metricCard(theme, cs, 'Total Members', '${overview['totalMembers'] ?? 0}', Icons.people_outline),
@@ -165,24 +163,25 @@ class _GroupAnalyticsScreenState extends ConsumerState<GroupAnalyticsScreen> {
 
   Widget _metricCard(ThemeData theme, ColorScheme cs, String label, String value, IconData icon) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: cs.outline.withValues(alpha: 0.15)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(child: Text(label, style: theme.textTheme.labelMedium?.copyWith(color: cs.secondary), maxLines: 1, overflow: TextOverflow.ellipsis)),
-              Icon(icon, size: 18, color: cs.primary),
+              Expanded(child: Text(label, style: theme.textTheme.labelSmall?.copyWith(color: cs.secondary), maxLines: 1, overflow: TextOverflow.ellipsis)),
+              Icon(icon, size: 16, color: cs.primary),
             ],
           ),
-          Text(value, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(value, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 15)),
         ],
       ),
     );
@@ -193,11 +192,11 @@ class _GroupAnalyticsScreenState extends ConsumerState<GroupAnalyticsScreen> {
     final progress = ((data['progressPercentage'] ?? 0) as num).toDouble() / 100.0;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: cs.outline.withValues(alpha: 0.2)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.15)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -212,17 +211,17 @@ class _GroupAnalyticsScreenState extends ConsumerState<GroupAnalyticsScreen> {
                 Text('${(progress * 100).toInt()}% Settled', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold)),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
               value: progress.clamp(0.0, 1.0),
-              minHeight: 10,
+              minHeight: 8,
               backgroundColor: cs.outlineVariant.withValues(alpha: 0.3),
               color: isSettled ? Colors.green : cs.primary,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -265,43 +264,31 @@ class _GroupAnalyticsScreenState extends ConsumerState<GroupAnalyticsScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         children: [
           SizedBox(
-            height: 200,
+            height: 180,
             child: PieChart(
               PieChartData(
-                pieTouchData: PieTouchData(
-                  touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                    setState(() {
-                      if (!event.isInterestedForInteractions || pieTouchResponse == null || pieTouchResponse.touchedSection == null) {
-                        _touchedCategoryIndex = -1;
-                        return;
-                      }
-                      _touchedCategoryIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
-                    });
-                  },
-                ),
+                pieTouchData: const PieTouchData(enabled: false),
                 sectionsSpace: 2,
-                centerSpaceRadius: 40,
+                centerSpaceRadius: 36,
                 sections: List.generate(items.length, (i) {
                   final item = items[i];
-                  final isTouched = i == _touchedCategoryIndex;
-                  final radius = isTouched ? 60.0 : 50.0;
                   return PieChartSectionData(
                     color: colors[i % colors.length],
                     value: (item['amount'] as num).toDouble(),
                     title: '${item['percentage']}%',
-                    radius: radius,
-                    titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                    radius: 45.0,
+                    titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                   );
                 }),
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Column(
             children: List.generate(items.length, (i) {
               final item = items[i];
@@ -309,7 +296,7 @@ class _GroupAnalyticsScreenState extends ConsumerState<GroupAnalyticsScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
                   children: [
-                    Container(width: 12, height: 12, decoration: BoxDecoration(color: colors[i % colors.length], shape: BoxShape.circle)),
+                    Container(width: 10, height: 10, decoration: BoxDecoration(color: colors[i % colors.length], shape: BoxShape.circle)),
                     const SizedBox(width: 8),
                     Text(item['category'] as String, style: theme.textTheme.bodyMedium),
                     const Spacer(),
@@ -340,43 +327,31 @@ class _GroupAnalyticsScreenState extends ConsumerState<GroupAnalyticsScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         children: [
           SizedBox(
-            height: 200,
+            height: 180,
             child: PieChart(
               PieChartData(
-                pieTouchData: PieTouchData(
-                  touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                    setState(() {
-                      if (!event.isInterestedForInteractions || pieTouchResponse == null || pieTouchResponse.touchedSection == null) {
-                        _touchedMemberIndex = -1;
-                        return;
-                      }
-                      _touchedMemberIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
-                    });
-                  },
-                ),
+                pieTouchData: const PieTouchData(enabled: false),
                 sectionsSpace: 2,
-                centerSpaceRadius: 40,
+                centerSpaceRadius: 36,
                 sections: List.generate(items.length, (i) {
                   final item = items[i];
-                  final isTouched = i == _touchedMemberIndex;
-                  final radius = isTouched ? 60.0 : 50.0;
                   return PieChartSectionData(
                     color: colors[i % colors.length],
                     value: (item['amount'] as num).toDouble(),
                     title: '${item['percentage']}%',
-                    radius: radius,
-                    titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                    radius: 45.0,
+                    titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                   );
                 }),
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Column(
             children: List.generate(items.length, (i) {
               final item = items[i];
@@ -384,7 +359,7 @@ class _GroupAnalyticsScreenState extends ConsumerState<GroupAnalyticsScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
                   children: [
-                    Container(width: 12, height: 12, decoration: BoxDecoration(color: colors[i % colors.length], shape: BoxShape.circle)),
+                    Container(width: 10, height: 10, decoration: BoxDecoration(color: colors[i % colors.length], shape: BoxShape.circle)),
                     const SizedBox(width: 8),
                     Text(item['userName'] as String, style: theme.textTheme.bodyMedium),
                     const Spacer(),
@@ -409,11 +384,11 @@ class _GroupAnalyticsScreenState extends ConsumerState<GroupAnalyticsScreen> {
         final isNegative = net < -0.01;
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: cs.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -431,7 +406,7 @@ class _GroupAnalyticsScreenState extends ConsumerState<GroupAnalyticsScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -450,13 +425,13 @@ class _GroupAnalyticsScreenState extends ConsumerState<GroupAnalyticsScreen> {
     final spots = List.generate(items.length, (i) => FlSpot(i.toDouble(), (items[i]['amount'] as num).toDouble()));
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 24, 24, 16),
+      padding: const EdgeInsets.fromLTRB(16, 20, 20, 14),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: SizedBox(
-        height: 220,
+        height: 200,
         child: LineChart(
           LineChartData(
             gridData: const FlGridData(show: false),
@@ -471,7 +446,7 @@ class _GroupAnalyticsScreenState extends ConsumerState<GroupAnalyticsScreen> {
                     final idx = val.toInt();
                     if (idx >= 0 && idx < items.length) {
                       return Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
+                        padding: const EdgeInsets.only(top: 6.0),
                         child: Text(items[idx]['label'] as String, style: theme.textTheme.labelSmall?.copyWith(fontSize: 10)),
                       );
                     }
@@ -506,11 +481,12 @@ class _GroupAnalyticsScreenState extends ConsumerState<GroupAnalyticsScreen> {
     return Container(
       decoration: BoxDecoration(
         color: cs.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         children: items.map((item) {
           return ListTile(
+            dense: true,
             title: Text(item['category'] as String, style: const TextStyle(fontWeight: FontWeight.w600)),
             subtitle: Text('${item['count']} expense${(item['count'] as num) > 1 ? 's' : ''} • Avg: $symbol${(item['averageExpense'] as num).toStringAsFixed(2)}'),
             trailing: Column(
@@ -518,7 +494,7 @@ class _GroupAnalyticsScreenState extends ConsumerState<GroupAnalyticsScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text('$symbol${(item['amount'] as num).toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text('${item['percentage']}%', style: TextStyle(fontSize: 12, color: cs.secondary)),
+                Text('${item['percentage']}%', style: TextStyle(fontSize: 11, color: cs.secondary)),
               ],
             ),
           );
@@ -535,9 +511,9 @@ class _GroupAnalyticsScreenState extends ConsumerState<GroupAnalyticsScreen> {
       crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.4,
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 2.2,
       children: [
         _topStatCard(theme, cs, 'Highest Expense', highestExp['title'] ?? 'None', '$symbol${(highestExp['amount'] ?? 0).toStringAsFixed(2)}'),
         _topStatCard(theme, cs, 'Highest Spender', highestSpender['userName'] ?? 'None', '$symbol${(highestSpender['amount'] ?? 0).toStringAsFixed(2)}'),
@@ -551,19 +527,20 @@ class _GroupAnalyticsScreenState extends ConsumerState<GroupAnalyticsScreen> {
 
   Widget _topStatCard(ThemeData theme, ColorScheme cs, String title, String mainVal, String subVal) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: cs.outline.withValues(alpha: 0.15)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(title, style: theme.textTheme.labelSmall?.copyWith(color: cs.secondary)),
-          Text(mainVal, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-          Text(subVal, style: theme.textTheme.labelMedium?.copyWith(color: cs.primary, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 2),
+          Text(mainVal, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(subVal, style: theme.textTheme.labelSmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w600)),
         ],
       ),
     );
