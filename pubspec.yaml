@@ -29,6 +29,7 @@ dependencies:
   dio: ^5.7.0
   dio_cookie_manager: ^3.1.1
   cookie_jar: ^4.0.8
+  socket_io_client: ^3.0.2
 
   # Local Storage
   shared_preferences: ^2.3.5

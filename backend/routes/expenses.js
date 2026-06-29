@@ -2,6 +2,7 @@ import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { sql } from '../db.js';
 import { authMiddleware } from './users.js';
+import { emitToGroup } from '../index.js';
 
 const router = express.Router();
 
@@ -24,56 +25,53 @@ async function enrichExpenses(expenses) {
     `,
   ]);
 
-  const payerMap = Object.fromEntries(payers.map(u => [u.id, u]));
+  const payerMap = new Map(payers.map(p => [p.id, p]));
+  const partMap = new Map();
+  participants.forEach(p => {
+    if (!partMap.has(p.expense_id)) partMap.set(p.expense_id, []);
+    partMap.get(p.expense_id).push(p);
+  });
 
-  return expenses.map(e => ({
-    id: e.id,
-    groupId: e.group_id,
-    group_id: e.group_id,
-    paidBy: e.paid_by,
-    paid_by: e.paid_by,
-    title: e.title,
-    amount: parseFloat(e.amount),
-    category: e.category,
-    notes: e.notes,
-    splitType: e.split_type,
-    split_type: e.split_type,
-    expenseDate: e.expense_date,
-    expense_date: e.expense_date,
-    createdAt: e.created_at,
-    created_at: e.created_at,
-    paidByUser: payerMap[e.paid_by]
-      ? {
-          id: payerMap[e.paid_by].id,
-          name: payerMap[e.paid_by].name,
-          email: payerMap[e.paid_by].email,
-          avatarId: payerMap[e.paid_by].avatar_id,
-          avatar_id: payerMap[e.paid_by].avatar_id,
-        }
-      : null,
-    participants: participants
-      .filter(p => p.expense_id === e.id)
-      .map(p => ({
+  return expenses.map(e => {
+    const payer = payerMap.get(e.paid_by) || {};
+    const parts = partMap.get(e.id) || [];
+    return {
+      id: e.id,
+      groupId: e.group_id,
+      title: e.title,
+      amount: parseFloat(e.amount),
+      category: e.category,
+      notes: e.notes,
+      splitType: e.split_type,
+      expenseDate: e.expense_date,
+      createdAt: e.created_at,
+      paidBy: {
+        id: e.paid_by,
+        name: payer.name || 'Unknown',
+        email: payer.email,
+        avatarId: payer.avatar_id || 'avatar_1',
+      },
+      participants: parts.map(p => ({
         id: p.id,
         expenseId: p.expense_id,
-        expense_id: p.expense_id,
         userId: p.user_id,
-        user_id: p.user_id,
+        userName: p.name || 'Unknown',
+        userEmail: p.email,
+        userAvatarId: p.avatar_id || 'avatar_1',
         shareAmount: parseFloat(p.share_amount),
-        share_amount: parseFloat(p.share_amount),
-        percentage: parseFloat(p.percentage || 0),
-        shares: p.shares || 1,
-        user: { id: p.user_id, name: p.name, email: p.email, avatarId: p.avatar_id, avatar_id: p.avatar_id },
+        percentage: p.percentage ? parseFloat(p.percentage) : null,
+        shares: p.shares,
       })),
-  }));
+    };
+  });
 }
 
 // ── GET /api/groups/:groupId/expenses ─────────────────────────────
-export async function getGroupExpensesHandler(req, res) {
+async function getGroupExpensesHandler(req, res) {
   try {
     const { groupId } = req.params;
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const page = parseInt(req.query.page || '1');
+    const limit = parseInt(req.query.limit || '50');
     const offset = (page - 1) * limit;
 
     const expenses = await sql`
@@ -83,11 +81,20 @@ export async function getGroupExpensesHandler(req, res) {
       LIMIT ${limit} OFFSET ${offset}
     `;
 
+    const totalRows = await sql`
+      SELECT COUNT(*) FROM expenses WHERE group_id = ${groupId}
+    `;
+
     const enriched = await enrichExpenses(expenses);
-    return res.json({ expenses: enriched, page, limit });
+    return res.json({
+      expenses: enriched,
+      total: parseInt(totalRows[0].count),
+      page,
+      limit,
+    });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: 'Failed to fetch expenses' });
+    return res.status(500).json({ error: 'Failed to fetch group expenses' });
   }
 }
 
@@ -97,8 +104,8 @@ router.get('/:groupId/expenses', authMiddleware, getGroupExpensesHandler);
 // ── GET /api/expenses/me ──────────────────────────────────────────
 router.get('/me', authMiddleware, async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const page = parseInt(req.query.page || '1');
+    const limit = parseInt(req.query.limit || '50');
     const offset = (page - 1) * limit;
 
     const expenses = await sql`
@@ -113,7 +120,8 @@ router.get('/me', authMiddleware, async (req, res) => {
     const enriched = await enrichExpenses(expenses);
     return res.json({ expenses: enriched });
   } catch (err) {
-    return res.status(500).json({ error: 'Failed to fetch expenses' });
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to fetch user expenses' });
   }
 });
 
@@ -185,6 +193,10 @@ router.post('/', authMiddleware, async (req, res) => {
 
     const expenses = await sql`SELECT * FROM expenses WHERE id = ${expenseId}`;
     const enriched = await enrichExpenses(expenses);
+
+    // Broadcast real-time socket event to all active members of this group!
+    emitToGroup(targetGroupId, 'realtime_update', { type: 'expense_created', groupId: targetGroupId, expense: enriched[0] });
+
     return res.status(201).json({ expense: enriched[0] });
   } catch (err) {
     console.error(err);
@@ -225,6 +237,10 @@ router.put('/:expenseId', authMiddleware, async (req, res) => {
 
     const expenses = await sql`SELECT * FROM expenses WHERE id = ${expenseId}`;
     const enriched = await enrichExpenses(expenses);
+    if (enriched[0]?.groupId) {
+      emitToGroup(enriched[0].groupId, 'realtime_update', { type: 'expense_updated', groupId: enriched[0].groupId, expense: enriched[0] });
+    }
+
     return res.json({ expense: enriched[0] });
   } catch (err) {
     return res.status(500).json({ error: 'Failed to update expense' });
@@ -234,7 +250,11 @@ router.put('/:expenseId', authMiddleware, async (req, res) => {
 // ── DELETE /api/expenses/:expenseId ──────────────────────────────
 router.delete('/:expenseId', authMiddleware, async (req, res) => {
   try {
+    const existing = await sql`SELECT group_id FROM expenses WHERE id = ${req.params.expenseId}`;
     await sql`DELETE FROM expenses WHERE id = ${req.params.expenseId} AND paid_by = ${req.user.userId}`;
+    if (existing[0]?.group_id) {
+      emitToGroup(existing[0].group_id, 'realtime_update', { type: 'expense_deleted', groupId: existing[0].group_id, expenseId: req.params.expenseId });
+    }
     return res.json({ message: 'Expense deleted' });
   } catch (err) {
     return res.status(500).json({ error: 'Failed to delete expense' });

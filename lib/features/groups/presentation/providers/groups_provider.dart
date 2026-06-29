@@ -20,10 +20,8 @@ class GroupsNotifier extends AsyncNotifier<List<Group>> {
   }
 
   Future<void> refresh() async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(
-      () => ref.read(groupsRepositoryProvider).getMyGroups(),
-    );
+    ref.invalidateSelf();
+    await future;
   }
 
   Future<Group?> createGroup({required String name, String? description}) async {

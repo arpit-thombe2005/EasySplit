@@ -31,12 +31,19 @@ class GroupsScreen extends ConsumerWidget {
       body: groupsAsync.when(
         data: (groups) {
           if (groups.isEmpty) {
-            return EmptyState(
-              icon: Icons.group_outlined,
-              title: 'No groups yet',
-              subtitle: 'Create a group and start splitting expenses with your friends and family.',
-              actionLabel: 'Create Group',
-              onAction: () => context.push(AppRoutes.createGroup),
+            return RefreshIndicator(
+              onRefresh: () => ref.read(groupsNotifierProvider.notifier).refresh(),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.7,
+                  child: const EmptyState(
+                    icon: Icons.group_outlined,
+                    title: 'No groups yet',
+                    subtitle: 'Create a group and start splitting expenses with your friends and family.',
+                  ),
+                ),
+              ),
             );
           }
 

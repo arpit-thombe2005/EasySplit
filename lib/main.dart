@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_split/core/router/app_router.dart';
 import 'package:easy_split/core/theme/app_theme.dart';
+import 'package:easy_split/core/services/socket_provider.dart';
 import 'package:easy_split/features/profile/presentation/screens/profile_screen.dart';
 
 void main() async {
@@ -34,6 +35,7 @@ class EasySplitApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(realtimeSyncProvider);
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeModeProvider);
 

@@ -4,6 +4,7 @@ import { sql } from '../db.js';
 import { authMiddleware } from './users.js';
 import { getGroupExpensesHandler } from './expenses.js';
 import { getGroupSettlementsHandler } from './settlements.js';
+import { emitToUser, emitToGroup } from '../index.js';
 
 const router = express.Router();
 
@@ -344,9 +345,12 @@ async function createInvitationHandler(req, res) {
       WHERE gi.id = ${invId}
     `;
 
+    const formattedInv = formatGroupInvitation(resultInv[0]);
+    emitToUser(targetUserId, 'realtime_update', { type: 'invitation_created', invitation: formattedInv });
+
     return res.status(201).json({
       message: 'Invitation sent successfully',
-      invitation: formatGroupInvitation(resultInv[0]),
+      invitation: formattedInv,
     });
   } catch (err) {
     console.error(err);

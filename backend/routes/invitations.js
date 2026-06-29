@@ -2,6 +2,7 @@ import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { sql } from '../db.js';
 import { authMiddleware } from './users.js';
+import { emitToGroup, emitToUser } from '../index.js';
 
 const router = express.Router();
 
@@ -104,6 +105,9 @@ router.post('/:invitationId/accept', authMiddleware, async (req, res) => {
       )
     `;
 
+    emitToGroup(inv.group_id, 'realtime_update', { type: 'invitation_accepted', groupId: inv.group_id, userId: req.user.userId });
+    emitToUser(inv.sender_id, 'realtime_update', { type: 'invitation_accepted', groupId: inv.group_id, userId: req.user.userId });
+
     return res.json({ message: 'Invitation accepted successfully' });
   } catch (err) {
     console.error('Accept invitation error:', err);
@@ -130,6 +134,8 @@ router.post('/:invitationId/decline', authMiddleware, async (req, res) => {
       SET status = 'declined', updated_at = NOW()
       WHERE id = ${invitationId}
     `;
+
+    emitToUser(existing[0].sender_id, 'realtime_update', { type: 'invitation_declined', groupId: existing[0].group_id });
 
     return res.json({ message: 'Invitation declined successfully' });
   } catch (err) {

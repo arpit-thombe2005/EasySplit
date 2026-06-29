@@ -2,6 +2,7 @@ import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { sql } from '../db.js';
 import { authMiddleware } from './users.js';
+import { emitToGroup, emitToUser } from '../index.js';
 
 const router = express.Router();
 
@@ -92,7 +93,11 @@ router.post('/', authMiddleware, async (req, res) => {
       WHERE s.id = ${settlementId}
     `;
 
-    return res.status(201).json({ settlement: formatSettlement(settlements[0]) });
+    const formatted = formatSettlement(settlements[0]);
+    if (targetGroupId) emitToGroup(targetGroupId, 'realtime_update', { type: 'settlement_created', groupId: targetGroupId, settlement: formatted });
+    emitToUser(targetToUser, 'realtime_update', { type: 'settlement_created', settlement: formatted });
+
+    return res.status(201).json({ settlement: formatted });
   } catch (err) {
     return res.status(500).json({ error: 'Failed to create settlement' });
   }
@@ -123,7 +128,12 @@ router.patch('/:settlementId/settle', authMiddleware, async (req, res) => {
       WHERE s.id = ${settlementId}
     `;
 
-    return res.json({ settlement: formatSettlement(enriched[0]) });
+    const formatted = formatSettlement(enriched[0]);
+    if (formatted.groupId) emitToGroup(formatted.groupId, 'realtime_update', { type: 'settlement_updated', groupId: formatted.groupId, settlement: formatted });
+    emitToUser(formatted.fromUser, 'realtime_update', { type: 'settlement_updated', settlement: formatted });
+    emitToUser(formatted.toUser, 'realtime_update', { type: 'settlement_updated', settlement: formatted });
+
+    return res.json({ settlement: formatted });
   } catch (err) {
     return res.status(500).json({ error: 'Failed to settle' });
   }

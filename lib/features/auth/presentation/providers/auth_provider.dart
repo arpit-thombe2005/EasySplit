@@ -5,6 +5,9 @@ import 'package:easy_split/core/services/auth_service.dart';
 import 'package:easy_split/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:easy_split/features/auth/domain/models/user.dart';
 import 'package:easy_split/features/auth/domain/repositories/auth_repository.dart';
+import 'package:easy_split/features/groups/presentation/providers/groups_provider.dart';
+import 'package:easy_split/features/groups/presentation/providers/invitations_provider.dart';
+import 'package:easy_split/features/settlements/presentation/providers/settlements_provider.dart';
 
 // ── Infrastructure Providers ──────────────────────────────────────
 
@@ -36,6 +39,12 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 
 /// Notifier managing OTP flow state
 class AuthNotifier extends AsyncNotifier<User?> {
+  void _clearUserSessionState() {
+    ref.invalidate(groupsNotifierProvider);
+    ref.invalidate(pendingInvitationsProvider);
+    ref.invalidate(settlementsNotifierProvider);
+  }
+
   @override
   Future<User?> build() async {
     final repo = ref.watch(authRepositoryProvider);
@@ -51,6 +60,7 @@ class AuthNotifier extends AsyncNotifier<User?> {
     final repo = ref.read(authRepositoryProvider);
     try {
       await repo.verifyOtp(email: email, otp: otp);
+      _clearUserSessionState();
       final user = await repo.getCurrentUser();
       state = AsyncData(user);
       return true;
@@ -88,6 +98,7 @@ class AuthNotifier extends AsyncNotifier<User?> {
   Future<void> logout() async {
     final repo = ref.read(authRepositoryProvider);
     await repo.logout();
+    _clearUserSessionState();
     state = const AsyncData(null);
   }
 }

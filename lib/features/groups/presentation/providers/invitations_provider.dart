@@ -20,10 +20,8 @@ class PendingInvitationsNotifier extends AsyncNotifier<List<GroupInvitation>> {
   }
 
   Future<void> refresh() async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(
-      () => ref.read(invitationsRepositoryProvider).getPendingInvitations(),
-    );
+    ref.invalidateSelf();
+    await future;
   }
 
   Future<bool> acceptInvitation(String invitationId) async {
@@ -32,7 +30,7 @@ class PendingInvitationsNotifier extends AsyncNotifier<List<GroupInvitation>> {
       final current = state.valueOrNull ?? [];
       state = AsyncData(current.where((i) => i.id != invitationId).toList());
       // Refresh user's groups list so the newly joined group appears!
-      ref.read(groupsNotifierProvider.notifier).refresh();
+      ref.invalidate(groupsNotifierProvider);
       return true;
     } catch (e) {
       rethrow;

@@ -24,16 +24,26 @@ class GroupInvitationsScreen extends ConsumerWidget {
       body: pendingAsync.when(
         data: (invitations) {
           if (invitations.isEmpty) {
-            return const EmptyState(
-              icon: Icons.mail_outline_rounded,
-              title: 'No pending invitations',
-              subtitle: 'When friends invite you to join their groups, the invitations will appear here.',
+            return RefreshIndicator(
+              onRefresh: () => ref.read(pendingInvitationsProvider.notifier).refresh(),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.7,
+                  child: const EmptyState(
+                    icon: Icons.mail_outline_rounded,
+                    title: 'No pending invitations',
+                    subtitle: 'When friends invite you to join their groups, the invitations will appear here.',
+                  ),
+                ),
+              ),
             );
           }
 
           return RefreshIndicator(
             onRefresh: () => ref.read(pendingInvitationsProvider.notifier).refresh(),
             child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(20),
               itemCount: invitations.length,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
