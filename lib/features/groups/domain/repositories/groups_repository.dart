@@ -35,4 +35,7 @@ abstract class GroupsRepository {
 
   /// Leave a group (current user removes themselves).
   Future<void> leaveGroup(String groupId);
+
+  /// Export group expenses as Excel file bytes.
+  Future<List<int>> exportExpenses(String groupId);
 }

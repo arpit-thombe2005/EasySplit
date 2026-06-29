@@ -14,6 +14,7 @@ import 'package:easy_split/shared/widgets/loading_overlay.dart';
 import 'package:easy_split/features/settlements/presentation/providers/settlements_provider.dart';
 import 'package:easy_split/features/settlements/presentation/widgets/settle_up_sheet.dart';
 import 'package:easy_split/features/settlements/domain/models/settlement.dart';
+import 'package:easy_split/core/utils/file_download.dart';
 
 /// Groups Screen — shows all groups the user belongs to.
 class GroupsScreen extends ConsumerWidget {
@@ -227,7 +228,32 @@ class GroupDetailScreen extends ConsumerWidget {
             ),
             PopupMenuButton<String>(
               onSelected: (value) async {
-                if (value == 'leave') {
+                if (value == 'export') {
+                  try {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Generating Excel report...')),
+                    );
+                    final bytes = await ref.read(groupsRepositoryProvider).exportExpenses(groupId);
+                    final cleanName = group.name.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+                    final dateStr = DateTime.now().toIso8601String().split('T')[0];
+                    final filename = 'EasySplit_${cleanName}_$dateStr.xlsx';
+                    downloadFile(bytes, filename);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Report exported: $filename')),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Export failed: ${e.toString().replaceAll('AppException(server): ', '')}'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                } else if (value == 'leave') {
                   final confirm = await _confirmDialog(
                     context,
                     'Leave Group',
@@ -238,19 +264,20 @@ class GroupDetailScreen extends ConsumerWidget {
                     if (context.mounted) context.go(AppRoutes.groups);
                   }
                 } else if (value == 'delete') {
-                  final confirm = await _confirmDialog(
-                    context,
-                    'Delete Group',
-                    'This will permanently delete the group and all its expenses.',
-                    isDestructive: true,
-                  );
-                  if (confirm == true) {
-                    await ref.read(groupsNotifierProvider.notifier).deleteGroup(groupId);
-                    if (context.mounted) context.go(AppRoutes.groups);
-                  }
+                  await _showDeleteConfirmationDialog(context, ref, group);
                 }
               },
               itemBuilder: (_) => [
+                const PopupMenuItem(
+                  value: 'export',
+                  child: Row(
+                    children: [
+                      Icon(Icons.download_rounded, size: 20),
+                      SizedBox(width: 8),
+                      Text('Export Expenses'),
+                    ],
+                  ),
+                ),
                 const PopupMenuItem(value: 'leave', child: Text('Leave Group')),
                 if (group.createdBy == user?.id)
                   const PopupMenuItem(
@@ -849,4 +876,61 @@ class _SettlementSummaryCard extends ConsumerWidget {
     );
   }
 }
+
+Future<void> _showDeleteConfirmationDialog(
+  BuildContext context,
+  WidgetRef ref,
+  Group group,
+) async {
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Delete Group'),
+      content: const Text(
+        'Deleting this group is permanent.\n\n'
+        'Before deletion, an Excel report containing the complete expense history will be generated and emailed to every group member.\n\n'
+        'This action cannot be undone.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+          ),
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: const Text('Export & Delete'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirm == true && context.mounted) {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Generating backup reports & deleting group...')),
+      );
+      await ref.read(groupsNotifierProvider.notifier).deleteGroup(group.id);
+      if (context.mounted) {
+        context.go(AppRoutes.groups);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Group deleted and backup reports emailed successfully.')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete group: ${e.toString().replaceAll('AppException(server): ', '')}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+}
+
 

@@ -5,6 +5,8 @@ import { authMiddleware } from './users.js';
 import { getGroupExpensesHandler } from './expenses.js';
 import { getGroupSettlementsHandler } from './settlements.js';
 import { emitToUser, emitToGroup } from '../index.js';
+import { generateGroupExcelReport } from '../services/excelGenerator.js';
+import { sendGroupBackupEmail } from '../services/emailService.js';
 
 const router = express.Router();
 
@@ -64,6 +66,51 @@ function formatGroup(g, members = [], invitations = []) {
   };
 }
 
+async function fetchGroupFullData(groupId) {
+  const groups = await sql`SELECT * FROM groups WHERE id = ${groupId}`;
+  if (groups.length === 0) return null;
+  const group = groups[0];
+
+  const members = await sql`
+    SELECT gm.group_id, gm.user_id, gm.joined_at, u.name, u.email, u.avatar_id
+    FROM group_members gm
+    JOIN users u ON gm.user_id = u.id
+    WHERE gm.group_id = ${groupId}
+  `;
+
+  const rawExpenses = await sql`
+    SELECT e.*, u.name AS paid_by_name
+    FROM expenses e
+    JOIN users u ON e.paid_by = u.id
+    WHERE e.group_id = ${groupId}
+    ORDER BY e.created_at DESC
+  `;
+
+  const expenseIds = rawExpenses.map((e) => e.id);
+  const participants = expenseIds.length > 0 ? await sql`
+    SELECT ep.*, u.name AS user_name
+    FROM expense_participants ep
+    JOIN users u ON ep.user_id = u.id
+    WHERE ep.expense_id = ANY(${expenseIds})
+  ` : [];
+
+  const expenses = rawExpenses.map((e) => ({
+    ...e,
+    participants: participants.filter((p) => p.expense_id === e.id),
+  }));
+
+  const settlements = await sql`
+    SELECT s.*, fu.name AS from_user_name, tu.name AS to_user_name
+    FROM settlements s
+    JOIN users fu ON s.from_user = fu.id
+    JOIN users tu ON s.to_user = tu.id
+    WHERE s.group_id = ${groupId}
+    ORDER BY s.created_at DESC
+  `;
+
+  return { group, members, expenses, settlements };
+}
+
 // ── GET /api/groups ───────────────────────────────────────────────
 router.get('/', authMiddleware, async (req, res) => {
   try {
@@ -100,7 +147,7 @@ router.get('/', authMiddleware, async (req, res) => {
       ORDER BY g.updated_at DESC
     `;
 
-    const groupIds = groups.map(g => g.id);
+    const groupIds = groups.map((g) => g.id);
     const members = groupIds.length > 0 ? await sql`
       SELECT gm.group_id, gm.user_id, gm.joined_at, u.name, u.email, u.avatar_id
       FROM group_members gm
@@ -108,10 +155,10 @@ router.get('/', authMiddleware, async (req, res) => {
       WHERE gm.group_id = ANY(${groupIds})
     ` : [];
 
-    const enriched = groups.map(g =>
+    const enriched = groups.map((g) =>
       formatGroup(
         g,
-        members.filter(m => m.group_id === g.id)
+        members.filter((m) => m.group_id === g.id)
       )
     );
 
@@ -163,6 +210,35 @@ router.post('/', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Failed to create group' });
+  }
+});
+
+// ── GET /api/groups/:groupId/export ──────────────────────────────
+router.get('/:groupId/export', authMiddleware, async (req, res) => {
+  try {
+    const { groupId } = req.params;
+
+    const membership = await sql`
+      SELECT 1 FROM group_members WHERE group_id = ${groupId} AND user_id = ${req.user.userId}
+    `;
+    if (membership.length === 0) {
+      return res.status(403).json({ error: 'Not a member of this group' });
+    }
+
+    const data = await fetchGroupFullData(groupId);
+    if (!data) return res.status(404).json({ error: 'Group not found' });
+
+    const excelBuffer = await generateGroupExcelReport(data);
+    const cleanName = data.group.name.replace(/[^a-zA-Z0-9]/g, '');
+    const dateStr = new Date().toISOString().split('T')[0];
+    const filename = `EasySplit_${cleanName}_${dateStr}.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.send(excelBuffer);
+  } catch (err) {
+    console.error('Export error:', err);
+    return res.status(500).json({ error: 'Failed to export group expenses' });
   }
 });
 
@@ -269,16 +345,52 @@ router.put('/:groupId', authMiddleware, async (req, res) => {
 router.delete('/:groupId', authMiddleware, async (req, res) => {
   try {
     const { groupId } = req.params;
-    const result = await sql`
-      DELETE FROM groups WHERE id = ${groupId} AND created_by = ${req.user.userId} RETURNING id
-    `;
-    if (result.length === 0) return res.status(404).json({ error: 'Group not found or not authorized' });
+
+    const groupCheck = await sql`SELECT created_by, name FROM groups WHERE id = ${groupId}`;
+    if (groupCheck.length === 0) return res.status(404).json({ error: 'Group not found' });
+    if (groupCheck[0].created_by !== req.user.userId) {
+      return res.status(403).json({ error: 'Only the group owner can permanently delete this group' });
+    }
+
+    const data = await fetchGroupFullData(groupId);
+    if (!data) return res.status(404).json({ error: 'Group not found' });
+
+    // Step 1: Generate Excel report
+    const excelBuffer = await generateGroupExcelReport(data);
+    const cleanName = data.group.name.replace(/[^a-zA-Z0-9]/g, '');
+    const dateStr = new Date().toISOString().split('T')[0];
+    const filename = `EasySplit_${cleanName}_${dateStr}.xlsx`;
+
+    // Step 2: Send email to all current members
+    const emailPromises = data.members.map((m) => {
+      const email = m.email || m.user?.email;
+      if (!email) return Promise.resolve();
+      return sendGroupBackupEmail({
+        toEmail: email,
+        groupName: data.group.name,
+        excelBuffer: excelBuffer,
+        filename: filename,
+      }).catch((err) => {
+        console.error(`Failed to send backup email to ${email}:`, err);
+        throw err;
+      });
+    });
+
+    try {
+      await Promise.all(emailPromises);
+    } catch (emailErr) {
+      console.error('Email backup workflow failed prior to group deletion:', emailErr);
+      return res.status(500).json({ error: 'Failed to send report backup emails to all members. Group deletion cancelled.' });
+    }
+
+    // Step 3: Permanently delete group
+    await sql`DELETE FROM groups WHERE id = ${groupId}`;
 
     emitToGroup(groupId, 'realtime_update', { type: 'group_deleted', groupId });
-    return res.json({ message: 'Group deleted successfully' });
+    return res.json({ message: 'Group deleted and backup reports emailed successfully' });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Failed to delete group' });
+    console.error('Delete group workflow error:', err);
+    return res.status(500).json({ error: 'Failed to execute delete group workflow' });
   }
 });
 

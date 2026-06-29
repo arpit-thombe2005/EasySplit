@@ -71,4 +71,9 @@ class GroupsRepositoryImpl implements GroupsRepository {
   Future<void> leaveGroup(String groupId) async {
     await _api.post('/groups/$groupId/leave');
   }
+
+  @override
+  Future<List<int>> exportExpenses(String groupId) async {
+    return _api.getBytes('/groups/$groupId/export');
+  }
 }
