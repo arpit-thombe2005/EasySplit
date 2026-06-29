@@ -112,6 +112,15 @@ class AppTheme {
       colorScheme: colorScheme,
       textTheme: _buildTextTheme(_black, _grey500),
       scaffoldBackgroundColor: _surface,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: ZoomPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: ZoomPageTransitionsBuilder(),
+          TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+        },
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: _white,
         foregroundColor: _black,
@@ -325,6 +334,15 @@ class AppTheme {
       colorScheme: colorScheme,
       textTheme: _buildTextTheme(_white, _grey400),
       scaffoldBackgroundColor: _surfaceDark,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: ZoomPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: ZoomPageTransitionsBuilder(),
+          TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+        },
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: _surfaceDark,
         foregroundColor: _white,

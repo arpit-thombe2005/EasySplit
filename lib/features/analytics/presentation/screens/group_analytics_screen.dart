@@ -272,7 +272,7 @@ class _GroupAnalyticsScreenState extends ConsumerState<GroupAnalyticsScreen> {
             height: 180,
             child: PieChart(
               PieChartData(
-                pieTouchData: const PieTouchData(enabled: false),
+                pieTouchData: PieTouchData(enabled: false),
                 sectionsSpace: 2,
                 centerSpaceRadius: 36,
                 sections: List.generate(items.length, (i) {
@@ -335,7 +335,7 @@ class _GroupAnalyticsScreenState extends ConsumerState<GroupAnalyticsScreen> {
             height: 180,
             child: PieChart(
               PieChartData(
-                pieTouchData: const PieTouchData(enabled: false),
+                pieTouchData: PieTouchData(enabled: false),
                 sectionsSpace: 2,
                 centerSpaceRadius: 36,
                 sections: List.generate(items.length, (i) {

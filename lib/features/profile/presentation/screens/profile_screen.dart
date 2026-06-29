@@ -129,13 +129,13 @@ class ProfileScreen extends ConsumerWidget {
           _SettingsTile(
             icon: Icons.privacy_tip_outlined,
             title: 'Privacy Policy',
-            onTap: () {},
+            onTap: () => _showPrivacyPolicySheet(context),
           ),
 
-          // About
+          // App Version
           _SettingsTile(
             icon: Icons.info_outline_rounded,
-            title: 'About EasySplit',
+            title: 'App Version',
             subtitle: 'Version ${AppConstants.appVersion}',
             onTap: () {},
           ),
@@ -399,6 +399,77 @@ class ProfileScreen extends ConsumerWidget {
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Delete Account'),
           ),
+        ],
+      ),
+    );
+  }
+
+  void _showPrivacyPolicySheet(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.75,
+        maxChildSize: 0.9,
+        minChildSize: 0.5,
+        builder: (ctx, scrollController) => ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.all(24),
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: cs.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(Icons.privacy_tip_rounded, color: cs.primary),
+                const SizedBox(width: 10),
+                Text('Privacy Policy', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text('Last updated: June 2026', style: theme.textTheme.bodySmall?.copyWith(color: cs.secondary)),
+            const SizedBox(height: 20),
+            _policySection(theme, cs, '1. Information We Collect',
+                'EasySplit collects basic user profile information (such as your name, email address, preferred currency, and avatar selection) as well as group expense data and transaction records to enable shared bill calculation.'),
+            _policySection(theme, cs, '2. Expense Privacy',
+                'Your group expenses, member balances, and financial settlement records are kept strictly confidential and are accessible exclusively to authorized members of your specific groups.'),
+            _policySection(theme, cs, '3. Data Security & Backup',
+                'We implement industry-standard encryption protocols for data in transit and at rest. When group owners permanently finalize and delete a group, automated backup reports (.xlsx & .pdf) are securely emailed to members before permanent removal.'),
+            _policySection(theme, cs, '4. Email Communications',
+                'Your email address is utilized solely for essential service functions, including account authentication (verification OTPs), group invitations, and automated backup exports upon group deletion.'),
+            _policySection(theme, cs, '5. Your Rights & Control',
+                'You maintain full authority over your data. You may update your profile preferences, leave groups, or request permanent account deletion directly within the profile settings at any time.'),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _policySection(ThemeData theme, ColorScheme cs, String title, String body) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          Text(body, style: theme.textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.4)),
         ],
       ),
     );
