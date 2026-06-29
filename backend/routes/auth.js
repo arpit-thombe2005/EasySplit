@@ -45,39 +45,87 @@ function generateToken(userId) {
 
 async function sendOtpEmail(email, otp) {
   const senderEmail = process.env.SMTP_USER || 'arpitthombe2005@gmail.com';
+  const subject = `${otp} is your EasySplit verification code`;
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px; background: #fff;">
+      <div style="text-align: center; margin-bottom: 32px;">
+        <div style="display: inline-block; background: #0A0A0A; border-radius: 16px; padding: 12px 20px;">
+          <span style="color: #fff; font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">EasySplit</span>
+        </div>
+      </div>
+      
+      <h1 style="font-size: 24px; font-weight: 700; color: #0A0A0A; margin-bottom: 8px;">Your verification code</h1>
+      <p style="color: #737373; font-size: 16px; margin-bottom: 32px;">
+        Use this code to sign in to your EasySplit account. It expires in 10 minutes.
+      </p>
+      
+      <div style="background: #F5F5F5; border-radius: 16px; padding: 32px; text-align: center; margin-bottom: 32px;">
+        <span style="font-size: 48px; font-weight: 700; letter-spacing: 12px; color: #0A0A0A; font-family: monospace;">${otp}</span>
+      </div>
+      
+      <p style="color: #A3A3A3; font-size: 14px;">
+        If you didn't request this code, you can safely ignore this email.
+      </p>
+      
+      <hr style="border: none; border-top: 1px solid #E5E5E5; margin: 32px 0;">
+      <p style="color: #D4D4D4; font-size: 12px; text-align: center;">EasySplit — Smart Expense Splitting</p>
+    </body>
+    </html>
+  `;
+
+  // 1. Resend API support (HTTP REST - 100% reliable on cloud hosts)
+  if (process.env.RESEND_API_KEY) {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: process.env.EMAIL_FROM || 'EasySplit <onboarding@resend.dev>',
+        to: [email],
+        subject: subject,
+        html: htmlContent,
+      }),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Resend API error (${res.status}): ${errText}`);
+    }
+    return;
+  }
+
+  // 2. Brevo (Sendinblue) API support (HTTP REST)
+  if (process.env.BREVO_API_KEY) {
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': process.env.BREVO_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: 'EasySplit', email: senderEmail },
+        to: [{ email: email }],
+        subject: subject,
+        htmlContent: htmlContent,
+      }),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Brevo API error (${res.status}): ${errText}`);
+    }
+    return;
+  }
+
+  // 3. Standard Nodemailer SMTP
   const mailOptions = {
     from: `EasySplit <${senderEmail}>`,
     to: email,
-    subject: `${otp} is your EasySplit verification code`,
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head><meta charset="utf-8"></head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px; background: #fff;">
-        <div style="text-align: center; margin-bottom: 32px;">
-          <div style="display: inline-block; background: #0A0A0A; border-radius: 16px; padding: 12px 20px;">
-            <span style="color: #fff; font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">EasySplit</span>
-          </div>
-        </div>
-        
-        <h1 style="font-size: 24px; font-weight: 700; color: #0A0A0A; margin-bottom: 8px;">Your verification code</h1>
-        <p style="color: #737373; font-size: 16px; margin-bottom: 32px;">
-          Use this code to sign in to your EasySplit account. It expires in 10 minutes.
-        </p>
-        
-        <div style="background: #F5F5F5; border-radius: 16px; padding: 32px; text-align: center; margin-bottom: 32px;">
-          <span style="font-size: 48px; font-weight: 700; letter-spacing: 12px; color: #0A0A0A; font-family: monospace;">${otp}</span>
-        </div>
-        
-        <p style="color: #A3A3A3; font-size: 14px;">
-          If you didn't request this code, you can safely ignore this email.
-        </p>
-        
-        <hr style="border: none; border-top: 1px solid #E5E5E5; margin: 32px 0;">
-        <p style="color: #D4D4D4; font-size: 12px; text-align: center;">EasySplit — Smart Expense Splitting</p>
-      </body>
-      </html>
-    `,
+    subject: subject,
+    html: htmlContent,
     text: `Your EasySplit verification code is: ${otp}\n\nThis code expires in 10 minutes.`,
   };
 
