@@ -668,7 +668,7 @@ class _SettlementSummaryCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final user = ref.watch(currentUserProvider);
-    final currentUserId = user?.id ?? '';
+    final currentUserId = (user?.id ?? '').toLowerCase().trim();
     final symbol = currency == 'INR' ? '₹' : currency;
 
     final debts = ref.watch(groupSimplifiedDebtsProvider(groupId));
@@ -691,8 +691,17 @@ class _SettlementSummaryCard extends ConsumerWidget {
         const SizedBox(height: 8),
         Builder(
           builder: (_) {
-            final myDebts = debts.where((d) => d.fromUserId == currentUserId || d.toUserId == currentUserId).toList();
-            final pendingSettlements = settlementsAsync.valueOrNull?.where((s) => s.status.toLowerCase() == 'pending' && (s.fromUser == currentUserId || s.toUser == currentUserId)).toList() ?? [];
+            final myDebts = debts.where((d) {
+              final from = d.fromUserId.toLowerCase().trim();
+              final to = d.toUserId.toLowerCase().trim();
+              return from == currentUserId || to == currentUserId;
+            }).toList();
+
+            final pendingSettlements = settlementsAsync.valueOrNull?.where((s) {
+              final from = s.fromUser.toLowerCase().trim();
+              final to = s.toUser.toLowerCase().trim();
+              return s.status.toLowerCase() == 'pending' && (from == currentUserId || to == currentUserId);
+            }).toList() ?? [];
 
             if (myDebts.isEmpty && pendingSettlements.isEmpty) {
               return Container(
@@ -719,7 +728,7 @@ class _SettlementSummaryCard extends ConsumerWidget {
             return Column(
               children: [
                 ...myDebts.map((d) {
-                  final isOwedByMe = d.fromUserId == currentUserId;
+                  final isOwedByMe = d.fromUserId.toLowerCase().trim() == currentUserId;
                   final otherName = isOwedByMe ? d.toUserName : d.fromUserName;
 
                   return Container(

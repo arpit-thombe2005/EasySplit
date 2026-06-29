@@ -13,35 +13,45 @@ class DebtSimplifierService {
     required List<Expense> expenses,
     required List<Settlement> settlements,
   }) {
-    if (members.isEmpty) return [];
-
     final Map<String, String> userNameMap = {};
     final Map<String, double> netBalances = {};
 
-    for (final m in members) {
-      userNameMap[m.userId] = m.user?.name ?? 'Member';
-      netBalances[m.userId] = 0.0;
+    void registerUser(String? id, String? name) {
+      if (id == null || id.isEmpty) return;
+      netBalances.putIfAbsent(id, () => 0.0);
+      if (name != null && name.isNotEmpty && name != 'Unknown' && name != 'Member') {
+        userNameMap[id] = name;
+      }
     }
 
-    // 1. Calculate expense contributions & shares
+    // 1. Register members
+    for (final m in members) {
+      registerUser(m.userId, m.user?.name);
+    }
+
+    // 2. Calculate expense contributions & shares
     for (final e in expenses) {
       final payerId = e.paidBy;
+      registerUser(payerId, e.paidByUser?.name);
       netBalances[payerId] = (netBalances[payerId] ?? 0.0) + e.amount;
 
       for (final p in e.participants) {
+        registerUser(p.userId, p.user?.name);
         netBalances[p.userId] = (netBalances[p.userId] ?? 0.0) - p.shareAmount;
       }
     }
 
-    // 2. Adjust for COMPLETED settlements only (pending and rejected settlements do NOT alter net balances)
+    // 3. Adjust for COMPLETED settlements only (pending and rejected settlements do NOT alter net balances)
     for (final s in settlements) {
+      registerUser(s.fromUser, s.fromUserName);
+      registerUser(s.toUser, s.toUserName);
       if (s.status.toLowerCase() == 'completed') {
         netBalances[s.fromUser] = (netBalances[s.fromUser] ?? 0.0) + s.amount;
         netBalances[s.toUser] = (netBalances[s.toUser] ?? 0.0) - s.amount;
       }
     }
 
-    // 3. Separate into creditors and debtors
+    // 4. Separate into creditors and debtors
     final List<_UserBalance> creditors = [];
     final List<_UserBalance> debtors = [];
 
@@ -63,7 +73,7 @@ class DebtSimplifierService {
     int i = 0; // index for creditors
     int j = 0; // index for debtors
 
-    // 4. Greedy Minimum Cash Flow algorithm execution
+    // 5. Greedy Minimum Cash Flow algorithm execution
     while (i < creditors.length && j < debtors.length) {
       final creditor = creditors[i];
       final debtor = debtors[j];
