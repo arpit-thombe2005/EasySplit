@@ -16,15 +16,33 @@ import 'package:easy_split/features/settlements/presentation/screens/settlement_
 import 'package:easy_split/features/groups/presentation/providers/invitations_provider.dart';
 
 
+import 'package:easy_split/features/auth/domain/models/user.dart';
+
+class _AuthRefreshListenable extends ChangeNotifier {
+  _AuthRefreshListenable(Ref ref) {
+    ref.listen<AsyncValue<User?>>(authNotifierProvider, (prev, next) {
+      if (prev?.valueOrNull?.id != next.valueOrNull?.id || prev?.isLoading != next.isLoading) {
+        notifyListeners();
+      }
+    });
+  }
+}
+
+final _authRefreshProvider = Provider<_AuthRefreshListenable>((ref) {
+  return _AuthRefreshListenable(ref);
+});
+
 /// Provides the GoRouter instance as a Riverpod provider.
-/// Re-evaluates routes when auth state changes.
+/// Re-evaluates routes when auth state changes without destroying navigation stack.
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authNotifierProvider);
+  final refreshListenable = ref.watch(_authRefreshProvider);
 
   return GoRouter(
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: false,
+    refreshListenable: refreshListenable,
     redirect: (context, state) {
+      final authState = ref.read(authNotifierProvider);
       // Still loading auth state — no redirect
       if (authState.isLoading) return null;
 
