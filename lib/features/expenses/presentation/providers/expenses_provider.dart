@@ -134,7 +134,7 @@ class AddExpenseNotifier extends Notifier<AddExpenseState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        error: e.toString().replaceAll('AppException(server): ', ''),
+        error: e.toString(),
       );
       return null;
     }

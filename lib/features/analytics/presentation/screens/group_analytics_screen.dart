@@ -134,7 +134,7 @@ class _GroupAnalyticsScreenState extends ConsumerState<GroupAnalyticsScreen> {
           child: EmptyState(
             icon: Icons.error_outline_rounded,
             title: 'Failed to load statistics',
-            subtitle: e.toString().replaceAll('AppException(server): ', ''),
+            subtitle: e.toString(),
           ),
         ),
       ),

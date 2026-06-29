@@ -204,5 +204,5 @@ class AppException implements Exception {
   const AppException(this.message, {this.type = AppExceptionType.server});
 
   @override
-  String toString() => 'AppException(${type.name}): $message';
+  String toString() => message;
 }

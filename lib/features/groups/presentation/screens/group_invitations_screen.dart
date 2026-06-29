@@ -94,7 +94,7 @@ class _InvitationCardState extends ConsumerState<_InvitationCard> {
     } catch (e) {
       if (mounted) {
         messenger.showSnackBar(
-          SnackBar(content: Text(e.toString().replaceAll(RegExp(r'^AppException\([^)]+\):\s*'), ''))),
+          SnackBar(content: Text(e.toString())),
         );
       }
     } finally {
@@ -115,7 +115,7 @@ class _InvitationCardState extends ConsumerState<_InvitationCard> {
     } catch (e) {
       if (mounted) {
         messenger.showSnackBar(
-          SnackBar(content: Text(e.toString().replaceAll(RegExp(r'^AppException\([^)]+\):\s*'), ''))),
+          SnackBar(content: Text(e.toString())),
         );
       }
     } finally {

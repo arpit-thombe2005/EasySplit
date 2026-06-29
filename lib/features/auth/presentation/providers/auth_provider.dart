@@ -160,7 +160,7 @@ class OtpFormNotifier extends Notifier<OtpFormState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        error: e.toString().replaceAll('AppException(server): ', ''),
+        error: e.toString(),
       );
     }
   }
@@ -176,7 +176,7 @@ class OtpFormNotifier extends Notifier<OtpFormState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        error: e.toString().replaceAll('AppException(server): ', ''),
+        error: e.toString(),
       );
       return false;
     }

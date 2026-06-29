@@ -260,7 +260,7 @@ class GroupDetailScreen extends ConsumerWidget {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Export failed: ${e.toString().replaceAll('AppException(server): ', '')}'),
+                          content: Text('Export failed: $e'),
                           backgroundColor: Colors.red,
                         ),
                       );
@@ -285,7 +285,7 @@ class GroupDetailScreen extends ConsumerWidget {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('PDF export failed: ${e.toString().replaceAll('AppException(server): ', '')}'),
+                          content: Text('PDF export failed: $e'),
                           backgroundColor: Colors.red,
                         ),
                       );
@@ -1036,7 +1036,7 @@ Future<void> _showDeleteConfirmationDialog(
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to delete group: ${e.toString().replaceAll('AppException(server): ', '')}'),
+            content: Text('Failed to delete group: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -1089,7 +1089,7 @@ Future<void> _showLockConfirmationDialog(
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update lock: ${e.toString().replaceAll('AppException(server): ', '')}'),
+            content: Text('Failed to update lock: $e'),
             backgroundColor: Colors.red,
           ),
         );

@@ -107,7 +107,7 @@ class GroupFormNotifier extends Notifier<GroupFormState> {
       return group;
     } catch (e) {
       state = GroupFormState(
-        error: e.toString().replaceAll('AppException(server): ', ''),
+        error: e.toString(),
       );
       return null;
     }
@@ -132,8 +132,7 @@ class GroupFormNotifier extends Notifier<GroupFormState> {
       ref.invalidate(groupInvitationsProvider(groupId));
       return true;
     } catch (e) {
-      final msg = e.toString().replaceAll(RegExp(r'^AppException\([^)]+\):\s*'), '');
-      state = GroupFormState(error: msg);
+      state = GroupFormState(error: e.toString());
       return false;
     }
   }
