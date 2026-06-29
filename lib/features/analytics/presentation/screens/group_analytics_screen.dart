@@ -142,13 +142,15 @@ class GroupAnalyticsScreen extends ConsumerWidget {
       );
     }
 
-    final colors = [
-      cs.primary,
-      cs.secondary,
-      cs.tertiary,
-      Colors.blueGrey,
-      Colors.grey,
-      Colors.black87,
+    const colors = [
+      Color(0xFF6366F1), // Indigo
+      Color(0xFF10B981), // Emerald Green
+      Color(0xFFF59E0B), // Amber / Orange
+      Color(0xFFEC4899), // Rose / Pink
+      Color(0xFF3B82F6), // Electric Blue
+      Color(0xFF8B5CF6), // Purple
+      Color(0xFF14B8A6), // Teal
+      Color(0xFFF97316), // Bright Orange
     ];
 
     return Container(
