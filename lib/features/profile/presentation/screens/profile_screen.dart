@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:easy_split/core/constants/app_constants.dart';
@@ -116,6 +117,14 @@ class ProfileScreen extends ConsumerWidget {
             icon: Icons.person_outline_rounded,
             title: 'Edit Profile Name',
             onTap: () => _showEditProfileSheet(context, ref, user?.name ?? ''),
+          ),
+
+          // Contact & Support
+          _SettingsTile(
+            icon: Icons.support_agent_rounded,
+            title: 'Help & Support',
+            subtitle: 'easysplit2026@gmail.com',
+            onTap: () => _showSupportSheet(context),
           ),
 
           // Privacy
@@ -463,6 +472,129 @@ class ProfileScreen extends ConsumerWidget {
           Text(title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
           Text(body, style: theme.textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.4)),
+        ],
+      ),
+    );
+  }
+
+  void _showSupportSheet(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    const supportEmail = 'easysplit2026@gmail.com';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.7,
+        maxChildSize: 0.85,
+        minChildSize: 0.4,
+        builder: (ctx, scrollController) => ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.all(24),
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: cs.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(Icons.support_agent_rounded, color: cs.primary, size: 28),
+                const SizedBox(width: 12),
+                Text('Help & Support', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text('We are here to help you manage and split your group expenses smoothly.', style: theme.textTheme.bodySmall?.copyWith(color: cs.secondary)),
+            const SizedBox(height: 20),
+
+            // Email Card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: cs.outline.withValues(alpha: 0.15)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.email_outlined, size: 20, color: cs.primary),
+                      const SizedBox(width: 8),
+                      Text('Official Support Email', style: theme.textTheme.labelMedium?.copyWith(color: cs.secondary)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SelectableText(
+                    supportEmail,
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: cs.primary),
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.copy_rounded, size: 18),
+                      label: const Text('Copy Email Address'),
+                      style: OutlinedButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: () {
+                        Clipboard.setData(const ClipboardData(text: supportEmail));
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Support email copied to clipboard!'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            Text('Frequently Asked Questions', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            _faqTile(theme, cs, '📊 How do I export group reports?', 'Open any group details, tap the 3-dot menu (⋮) in the top right, and select "Export Expenses" for Excel or "Export PDF".'),
+            _faqTile(theme, cs, '🔒 What does locking a group do?', 'Locking a group freezes all expense additions and settlements, making the group read-only until unlocked by the owner.'),
+            _faqTile(theme, cs, '✉️ Automated email backups', 'When a group is deleted by the owner, automated final copies (.xlsx & .pdf) are sent to all members before deletion.'),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _faqTile(ThemeData theme, ColorScheme cs, String q, String a) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHigh.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(q, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(a, style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.3)),
         ],
       ),
     );
