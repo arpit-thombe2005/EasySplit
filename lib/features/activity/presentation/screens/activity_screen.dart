@@ -47,8 +47,8 @@ class ActivityScreen extends ConsumerWidget {
       );
     }
 
-    final pending = settlements.where((s) => s.status == SettlementStatus.pending).toList();
-    final completed = settlements.where((s) => s.status == SettlementStatus.completed).toList();
+    final pending = settlements.where((s) => s.status.toLowerCase() == 'pending').toList();
+    final completed = settlements.where((s) => s.status.toLowerCase() == 'completed').toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Activity')),
@@ -73,7 +73,7 @@ class ActivityScreen extends ConsumerWidget {
                       onSettle: () async {
                         await ref
                             .read(settlementsNotifierProvider.notifier)
-                            .markSettled(e.value.id);
+                            .confirmPayment(e.value.id, groupId: e.value.groupId);
                       },
                     )
                         .animate(delay: Duration(milliseconds: e.key * 60))
@@ -134,7 +134,7 @@ class _SettlementCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final isCompleted = settlement.status == SettlementStatus.completed;
+    final isCompleted = settlement.status.toLowerCase() == 'completed';
     final isOwer = settlement.fromUser == currentUserId;
 
     return Card(
@@ -206,7 +206,7 @@ class _SettlementCard extends ConsumerWidget {
                 ),
               ],
             ),
-            if (!isCompleted && onSettle != null) ...[
+            if (!isCompleted && onSettle != null && !isOwer) ...[
               const SizedBox(height: 12),
               const Divider(),
               const SizedBox(height: 8),
@@ -214,7 +214,7 @@ class _SettlementCard extends ConsumerWidget {
                 width: double.infinity,
                 child: OutlinedButton(
                   onPressed: onSettle,
-                  child: const Text('Mark as Settled'),
+                  child: const Text('Confirm Received'),
                 ),
               ),
             ],
