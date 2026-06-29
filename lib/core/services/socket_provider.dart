@@ -32,10 +32,11 @@ final realtimeSyncProvider = Provider<void>((ref) {
 
       if (groupId != null && groupId.isNotEmpty) {
         ref.invalidate(groupDetailProvider(groupId));
-        ref.invalidate(expensesProvider(groupId));
+        ref.invalidate(groupExpensesProvider(groupId));
         ref.invalidate(simplifiedDebtsProvider(groupId));
       }
 
+      ref.invalidate(userExpensesProvider);
       ref.invalidate(groupsNotifierProvider);
       ref.invalidate(settlementsNotifierProvider);
       ref.invalidate(pendingInvitationsProvider);
