@@ -12,11 +12,14 @@ class ApiService {
 
   ApiService({FlutterSecureStorage? storage})
       : _storage = storage ?? const FlutterSecureStorage() {
+    final base = AppConstants.baseUrl.endsWith('/')
+        ? AppConstants.baseUrl
+        : '${AppConstants.baseUrl}/';
     _dio = Dio(
       BaseOptions(
-        baseUrl: AppConstants.baseUrl,
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
+        baseUrl: base,
+        connectTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 60),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -26,6 +29,8 @@ class ApiService {
 
     _setupInterceptors();
   }
+
+  String _cleanPath(String path) => path.startsWith('/') ? path.substring(1) : path;
 
   void _setupInterceptors() {
     _dio.interceptors.add(
@@ -57,7 +62,7 @@ class ApiService {
   }) async {
     try {
       final response = await _dio.get(
-        path,
+        _cleanPath(path),
         queryParameters: queryParameters,
       );
       return _handleResponse(response);
@@ -71,7 +76,7 @@ class ApiService {
     Map<String, dynamic>? data,
   }) async {
     try {
-      final response = await _dio.post(path, data: data);
+      final response = await _dio.post(_cleanPath(path), data: data);
       return _handleResponse(response);
     } on DioException catch (e) {
       throw _mapError(e);
@@ -83,7 +88,7 @@ class ApiService {
     Map<String, dynamic>? data,
   }) async {
     try {
-      final response = await _dio.put(path, data: data);
+      final response = await _dio.put(_cleanPath(path), data: data);
       return _handleResponse(response);
     } on DioException catch (e) {
       throw _mapError(e);
@@ -95,7 +100,7 @@ class ApiService {
     Map<String, dynamic>? data,
   }) async {
     try {
-      final response = await _dio.patch(path, data: data);
+      final response = await _dio.patch(_cleanPath(path), data: data);
       return _handleResponse(response);
     } on DioException catch (e) {
       throw _mapError(e);
@@ -104,7 +109,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> delete(String path) async {
     try {
-      final response = await _dio.delete(path);
+      final response = await _dio.delete(_cleanPath(path));
       return _handleResponse(response);
     } on DioException catch (e) {
       throw _mapError(e);
@@ -125,7 +130,7 @@ class ApiService {
         ),
         ...?extraData,
       });
-      final response = await _dio.post(path, data: formData);
+      final response = await _dio.post(_cleanPath(path), data: formData);
       return _handleResponse(response);
     } on DioException catch (e) {
       throw _mapError(e);

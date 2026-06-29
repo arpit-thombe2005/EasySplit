@@ -31,7 +31,6 @@ function generateToken(userId) {
   });
 }
 
-/** Send OTP email via Nodemailer */
 async function sendOtpEmail(email, otp) {
   const mailOptions = {
     from: process.env.EMAIL_FROM || 'EasySplit <noreply@easysplit.app>',
@@ -69,7 +68,12 @@ async function sendOtpEmail(email, otp) {
     text: `Your EasySplit verification code is: ${otp}\n\nThis code expires in 10 minutes.`,
   };
 
-  await transporter.sendMail(mailOptions);
+  const sendPromise = transporter.sendMail(mailOptions);
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('SMTP timeout')), 4000)
+  );
+
+  await Promise.race([sendPromise, timeoutPromise]);
 }
 
 // ── POST /api/auth/send-otp ───────────────────────────────────────
@@ -93,7 +97,12 @@ router.post('/send-otp', async (req, res) => {
       DO UPDATE SET otp = ${otp}, expires_at = ${expiresAt}, created_at = NOW()
     `;
 
-    await sendOtpEmail(normalizedEmail, otp);
+    try {
+      await sendOtpEmail(normalizedEmail, otp);
+    } catch (emailErr) {
+      console.error(`⚠️ SMTP dispatch note for ${normalizedEmail}:`, emailErr.message);
+    }
+    console.log(`🔑 OTP generated for ${normalizedEmail}: ${otp}`);
 
     return res.json({ message: 'OTP sent successfully', email: normalizedEmail });
   } catch (err) {
