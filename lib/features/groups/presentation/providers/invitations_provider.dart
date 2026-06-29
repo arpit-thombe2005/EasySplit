@@ -26,11 +26,17 @@ class PendingInvitationsNotifier extends AsyncNotifier<List<GroupInvitation>> {
 
   Future<bool> acceptInvitation(String invitationId) async {
     try {
+      final currentList = state.valueOrNull ?? [];
+      final match = currentList.firstWhere((i) => i.id == invitationId, orElse: () => GroupInvitation(id: invitationId, groupId: '', groupName: ''));
+
       await ref.read(invitationsRepositoryProvider).acceptInvitation(invitationId);
-      final current = state.valueOrNull ?? [];
-      state = AsyncData(current.where((i) => i.id != invitationId).toList());
-      // Refresh user's groups list so the newly joined group appears!
+      state = AsyncData(currentList.where((i) => i.id != invitationId).toList());
+      
       ref.invalidate(groupsNotifierProvider);
+      if (match.groupId.isNotEmpty) {
+        ref.invalidate(groupDetailProvider(match.groupId));
+        ref.invalidate(groupInvitationsProvider(match.groupId));
+      }
       return true;
     } catch (e) {
       rethrow;
@@ -39,9 +45,16 @@ class PendingInvitationsNotifier extends AsyncNotifier<List<GroupInvitation>> {
 
   Future<bool> declineInvitation(String invitationId) async {
     try {
+      final currentList = state.valueOrNull ?? [];
+      final match = currentList.firstWhere((i) => i.id == invitationId, orElse: () => GroupInvitation(id: invitationId, groupId: '', groupName: ''));
+
       await ref.read(invitationsRepositoryProvider).declineInvitation(invitationId);
-      final current = state.valueOrNull ?? [];
-      state = AsyncData(current.where((i) => i.id != invitationId).toList());
+      state = AsyncData(currentList.where((i) => i.id != invitationId).toList());
+      
+      if (match.groupId.isNotEmpty) {
+        ref.invalidate(groupDetailProvider(match.groupId));
+        ref.invalidate(groupInvitationsProvider(match.groupId));
+      }
       return true;
     } catch (e) {
       rethrow;
