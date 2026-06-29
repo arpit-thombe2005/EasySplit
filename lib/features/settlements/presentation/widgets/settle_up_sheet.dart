@@ -27,7 +27,6 @@ class _SettleUpSheetState extends ConsumerState<SettleUpSheet> {
   late TextEditingController _amountController;
   late TextEditingController _noteController;
   String _selectedMethod = 'UPI';
-  DateTime _selectedDate = DateTime.now();
   bool _isSubmitting = false;
   String? _error;
 

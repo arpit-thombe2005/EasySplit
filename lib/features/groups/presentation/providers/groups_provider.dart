@@ -49,16 +49,33 @@ class GroupsNotifier extends AsyncNotifier<List<Group>> {
     final current = state.valueOrNull ?? [];
     state = AsyncData(current.where((g) => g.id != groupId).toList());
   }
+
+  Future<void> toggleGroupLock(String groupId, bool isLocked) async {
+    final updated = await ref.read(groupsRepositoryProvider).toggleGroupLock(groupId: groupId, isLocked: isLocked);
+    final current = state.valueOrNull ?? [];
+    state = AsyncData(current.map((g) => g.id == groupId ? updated : g).toList());
+    ref.invalidate(groupDetailProvider(groupId));
+  }
 }
 
 final groupsNotifierProvider =
     AsyncNotifierProvider<GroupsNotifier, List<Group>>(GroupsNotifier.new);
 
-// ── Single Group ──────────────────────────────────────────────────
+// ── Single Group & Analytics ──────────────────────────────────────
 
 final groupDetailProvider =
     FutureProvider.family<Group, String>((ref, groupId) async {
   return ref.read(groupsRepositoryProvider).getGroup(groupId);
+});
+
+final groupAnalyticsProvider =
+    FutureProvider.family<Map<String, dynamic>, ({String groupId, String? filter, String? startDate, String? endDate})>((ref, arg) async {
+  return ref.read(groupsRepositoryProvider).getAnalytics(
+        groupId: arg.groupId,
+        filter: arg.filter,
+        startDate: arg.startDate,
+        endDate: arg.endDate,
+      );
 });
 
 // ── Group Form State ──────────────────────────────────────────────

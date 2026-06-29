@@ -1,7 +1,6 @@
 import 'package:easy_split/core/services/api_service.dart';
 import 'package:easy_split/features/expenses/domain/models/expense.dart';
 import 'package:easy_split/features/expenses/domain/repositories/expenses_repository.dart';
-import 'package:easy_split/core/constants/app_constants.dart';
 
 /// Concrete implementation of [ExpensesRepository].
 class ExpensesRepositoryImpl implements ExpensesRepository {

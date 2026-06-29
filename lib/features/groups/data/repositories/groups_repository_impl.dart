@@ -76,4 +76,33 @@ class GroupsRepositoryImpl implements GroupsRepository {
   Future<List<int>> exportExpenses(String groupId) async {
     return _api.getBytes('/groups/$groupId/export');
   }
+
+  @override
+  Future<List<int>> exportPdf(String groupId) async {
+    return _api.getBytes('/groups/$groupId/export-pdf');
+  }
+
+  @override
+  Future<Group> toggleGroupLock({required String groupId, required bool isLocked}) async {
+    final data = await _api.patch('/groups/$groupId/lock', data: {
+      'isLocked': isLocked,
+    });
+    return Group.fromJson(data['group'] as Map<String, dynamic>);
+  }
+
+  @override
+  Future<Map<String, dynamic>> getAnalytics({
+    required String groupId,
+    String? filter,
+    String? startDate,
+    String? endDate,
+  }) async {
+    final query = <String, dynamic>{};
+    if (filter != null) query['filter'] = filter;
+    if (startDate != null) query['startDate'] = startDate;
+    if (endDate != null) query['endDate'] = endDate;
+
+    final data = await _api.get('/groups/$groupId/analytics', queryParameters: query);
+    return data['analytics'] as Map<String, dynamic>;
+  }
 }

@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS groups (
   name        VARCHAR(100) NOT NULL,
   description TEXT,
   created_by  UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  is_locked   BOOLEAN NOT NULL DEFAULT FALSE,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

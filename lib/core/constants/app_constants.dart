@@ -109,6 +109,7 @@ class AppRoutes {
   static const String home = '/home';
   static const String groups = '/groups';
   static const String groupDetail = '/groups/:groupId';
+  static const String groupAnalytics = '/groups/:groupId/analytics';
   static const String createGroup = '/groups/create';
   static const String editGroup = '/groups/:groupId/edit';
   static const String addExpense = '/groups/:groupId/expenses/add';

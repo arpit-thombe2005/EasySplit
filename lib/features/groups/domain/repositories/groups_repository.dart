@@ -38,4 +38,18 @@ abstract class GroupsRepository {
 
   /// Export group expenses as Excel file bytes.
   Future<List<int>> exportExpenses(String groupId);
+
+  /// Export group expenses as PDF file bytes.
+  Future<List<int>> exportPdf(String groupId);
+
+  /// Lock or unlock a group (owner only).
+  Future<Group> toggleGroupLock({required String groupId, required bool isLocked});
+
+  /// Fetch group analytics dashboard metrics.
+  Future<Map<String, dynamic>> getAnalytics({
+    required String groupId,
+    String? filter,
+    String? startDate,
+    String? endDate,
+  });
 }

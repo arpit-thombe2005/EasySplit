@@ -12,9 +12,9 @@ import 'package:easy_split/shared/widgets/group_card.dart';
 import 'package:easy_split/shared/widgets/expense_card.dart';
 import 'package:easy_split/shared/widgets/empty_state.dart';
 import 'package:easy_split/shared/widgets/loading_overlay.dart';
+import 'package:easy_split/shared/widgets/avatar_widget.dart';
 import 'package:easy_split/features/settlements/presentation/providers/settlements_provider.dart';
 import 'package:easy_split/features/settlements/presentation/widgets/settle_up_sheet.dart';
-import 'package:easy_split/features/settlements/domain/models/settlement.dart';
 import 'package:easy_split/core/utils/file_download.dart';
 
 /// Groups Screen — shows all groups the user belongs to.
@@ -220,16 +220,28 @@ class GroupDetailScreen extends ConsumerWidget {
     return groupAsync.when(
       data: (group) => Scaffold(
         appBar: AppBar(
-          title: Text(group.name),
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(child: Text(group.name, overflow: TextOverflow.ellipsis)),
+              if (group.isLocked) ...[
+                const SizedBox(width: 8),
+                const Icon(Icons.lock_rounded, size: 18, color: Colors.amber),
+              ],
+            ],
+          ),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.person_add_outlined),
-              onPressed: () => _showAddMemberSheet(context, ref, groupId),
-              tooltip: 'Add Member',
-            ),
+            if (!group.isLocked)
+              IconButton(
+                icon: const Icon(Icons.person_add_outlined),
+                onPressed: () => _showAddMemberSheet(context, ref, groupId),
+                tooltip: 'Add Member',
+              ),
             PopupMenuButton<String>(
               onSelected: (value) async {
-                if (value == 'export') {
+                if (value == 'analytics') {
+                  context.push('/groups/$groupId/analytics');
+                } else if (value == 'export_excel') {
                   try {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Generating Excel report...')),
@@ -254,7 +266,40 @@ class GroupDetailScreen extends ConsumerWidget {
                       );
                     }
                   }
+                } else if (value == 'export_pdf') {
+                  try {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Generating PDF report...')),
+                    );
+                    final bytes = await ref.read(groupsRepositoryProvider).exportPdf(groupId);
+                    final cleanName = group.name.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+                    final dateStr = DateTime.now().toIso8601String().split('T')[0];
+                    final filename = 'EasySplit_${cleanName}_$dateStr.pdf';
+                    downloadFile(bytes, filename);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('PDF exported: $filename')),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('PDF export failed: ${e.toString().replaceAll('AppException(server): ', '')}'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                } else if (value == 'lock') {
+                  await _showLockConfirmationDialog(context, ref, group, !group.isLocked);
                 } else if (value == 'leave') {
+                  if (group.isLocked) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Cannot leave a locked group.')),
+                    );
+                    return;
+                  }
                   final confirm = await _confirmDialog(
                     context,
                     'Leave Group',
@@ -270,15 +315,46 @@ class GroupDetailScreen extends ConsumerWidget {
               },
               itemBuilder: (_) => [
                 const PopupMenuItem(
-                  value: 'export',
+                  value: 'analytics',
                   child: Row(
                     children: [
-                      Icon(Icons.download_rounded, size: 20),
+                      Icon(Icons.bar_chart_rounded, size: 20),
                       SizedBox(width: 8),
-                      Text('Export Expenses'),
+                      Text('Statistics'),
                     ],
                   ),
                 ),
+                const PopupMenuItem(
+                  value: 'export_excel',
+                  child: Row(
+                    children: [
+                      Icon(Icons.description_outlined, size: 20),
+                      SizedBox(width: 8),
+                      Text('Export Expenses (.xlsx)'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'export_pdf',
+                  child: Row(
+                    children: [
+                      Icon(Icons.picture_as_pdf_outlined, size: 20),
+                      SizedBox(width: 8),
+                      Text('Export PDF (.pdf)'),
+                    ],
+                  ),
+                ),
+                if (group.createdBy == user?.id)
+                  PopupMenuItem(
+                    value: 'lock',
+                    child: Row(
+                      children: [
+                        Icon(group.isLocked ? Icons.lock_open_rounded : Icons.lock_rounded, size: 20),
+                        const SizedBox(width: 8),
+                        Text(group.isLocked ? 'Unlock Group' : 'Lock Group'),
+                      ],
+                    ),
+                  ),
                 const PopupMenuItem(value: 'leave', child: Text('Leave Group')),
                 if (group.createdBy == user?.id)
                   const PopupMenuItem(
@@ -292,6 +368,29 @@ class GroupDetailScreen extends ConsumerWidget {
         body: ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            if (group.isLocked) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: cs.outline.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.lock_rounded, size: 20, color: Colors.amber),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '🔒 Locked — This group has been finalized.',
+                        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             // Members & Invitations
             Text('Members', style: theme.textTheme.titleMedium),
             const SizedBox(height: 12),
@@ -311,17 +410,10 @@ class GroupDetailScreen extends ConsumerWidget {
                       ),
                       child: Row(
                         children: [
-                          CircleAvatar(
+                          AppAvatar(
+                            avatarId: m.user?.avatarId,
+                            name: m.user?.name ?? 'Member',
                             radius: 16,
-                            backgroundColor: cs.primary,
-                            child: Text(
-                              (m.user?.name ?? '?')[0].toUpperCase(),
-                              style: TextStyle(
-                                color: cs.onPrimary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -506,14 +598,15 @@ class GroupDetailScreen extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Expenses', style: theme.textTheme.titleMedium),
-                TextButton.icon(
-                  onPressed: () => context.push(
-                    AppRoutes.addExpense
-                        .replaceAll(':groupId', groupId),
+                if (!group.isLocked)
+                  TextButton.icon(
+                    onPressed: () => context.push(
+                      AppRoutes.addExpense
+                          .replaceAll(':groupId', groupId),
+                    ),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Add'),
                   ),
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('Add'),
-                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -944,6 +1037,59 @@ Future<void> _showDeleteConfirmationDialog(
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to delete group: ${e.toString().replaceAll('AppException(server): ', '')}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+}
+
+Future<void> _showLockConfirmationDialog(
+  BuildContext context,
+  WidgetRef ref,
+  Group group,
+  bool isLocking,
+) async {
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(isLocking ? 'Lock Group' : 'Unlock Group'),
+      content: Text(
+        isLocking
+            ? 'Locking this group will prevent any future modifications (expenses, members, settlements) until it is unlocked.'
+            : 'Unlocking this group will re-enable adding and editing expenses.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isLocking ? Colors.black87 : Colors.green,
+            foregroundColor: Colors.white,
+          ),
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: Text(isLocking ? 'Lock Group' : 'Unlock Group'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirm == true && context.mounted) {
+    try {
+      await ref.read(groupsNotifierProvider.notifier).toggleGroupLock(group.id, isLocking);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(isLocking ? 'Group locked successfully' : 'Group unlocked successfully')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update lock: ${e.toString().replaceAll('AppException(server): ', '')}'),
             backgroundColor: Colors.red,
           ),
         );

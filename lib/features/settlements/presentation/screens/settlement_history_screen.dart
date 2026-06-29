@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_split/features/auth/presentation/providers/auth_provider.dart';
-import 'package:easy_split/features/settlements/domain/models/settlement.dart';
 import 'package:easy_split/features/settlements/presentation/providers/settlements_provider.dart';
 
 /// Screen displaying complete Settlement History and pending receiver confirmations.

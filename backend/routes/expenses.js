@@ -167,6 +167,11 @@ router.post('/', authMiddleware, async (req, res) => {
     const targetSplitType = split_type || splitType || 'equal';
     const targetExpenseDate = expense_date || expenseDate;
 
+    const groupCheck = await sql`SELECT is_locked FROM groups WHERE id = ${targetGroupId}`;
+    if (groupCheck.length > 0 && groupCheck[0].is_locked) {
+      return res.status(403).json({ error: 'This group is finalized and locked. Adding expenses is disabled.' });
+    }
+
     if (!title?.trim()) return res.status(400).json({ error: 'Title is required' });
     if (!amount || parseFloat(amount) <= 0) return res.status(400).json({ error: 'Valid amount is required' });
     if (!participants || participants.length === 0) {
@@ -222,6 +227,13 @@ router.post('/', authMiddleware, async (req, res) => {
 router.put('/:expenseId', authMiddleware, async (req, res) => {
   try {
     const { expenseId } = req.params;
+    const existingExp = await sql`SELECT group_id FROM expenses WHERE id = ${expenseId}`;
+    if (existingExp.length > 0) {
+      const groupCheck = await sql`SELECT is_locked FROM groups WHERE id = ${existingExp[0].group_id}`;
+      if (groupCheck.length > 0 && groupCheck[0].is_locked) {
+        return res.status(403).json({ error: 'This group is finalized and locked. Editing expenses is disabled.' });
+      }
+    }
     const { title, amount, category, notes, split_type, splitType, expense_date, expenseDate, participants } = req.body;
     const targetSplitType = split_type || splitType;
     const targetExpenseDate = expense_date || expenseDate;
@@ -265,6 +277,12 @@ router.put('/:expenseId', authMiddleware, async (req, res) => {
 router.delete('/:expenseId', authMiddleware, async (req, res) => {
   try {
     const existing = await sql`SELECT group_id FROM expenses WHERE id = ${req.params.expenseId}`;
+    if (existing.length > 0) {
+      const groupCheck = await sql`SELECT is_locked FROM groups WHERE id = ${existing[0].group_id}`;
+      if (groupCheck.length > 0 && groupCheck[0].is_locked) {
+        return res.status(403).json({ error: 'This group is finalized and locked. Deleting expenses is disabled.' });
+      }
+    }
     await sql`DELETE FROM expenses WHERE id = ${req.params.expenseId} AND paid_by = ${req.user.userId}`;
     if (existing[0]?.group_id) {
       emitToGroup(existing[0].group_id, 'realtime_update', { type: 'expense_deleted', groupId: existing[0].group_id, expenseId: req.params.expenseId });

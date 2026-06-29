@@ -6,7 +6,9 @@ import { getGroupExpensesHandler } from './expenses.js';
 import { getGroupSettlementsHandler } from './settlements.js';
 import { emitToUser, emitToGroup } from '../index.js';
 import { generateGroupExcelReport } from '../services/excelGenerator.js';
+import { generateGroupPdfReport } from '../services/pdfGenerator.js';
 import { sendGroupBackupEmail } from '../services/emailService.js';
+import { getGroupAnalytics } from '../services/analyticsService.js';
 
 const router = express.Router();
 
@@ -57,6 +59,7 @@ function formatGroup(g, members = [], invitations = []) {
     name: g.name,
     description: g.description,
     createdBy: g.created_by || g.createdBy,
+    isLocked: Boolean(g.is_locked || g.isLocked),
     createdAt: g.created_at || g.createdAt,
     updatedAt: g.updated_at || g.updatedAt,
     totalExpenses: parseFloat(g.total_expenses || g.totalExpenses || 0),
@@ -120,6 +123,7 @@ router.get('/', authMiddleware, async (req, res) => {
         g.name,
         g.description,
         g.created_by,
+        g.is_locked,
         g.created_at,
         g.updated_at,
         COALESCE(
@@ -178,12 +182,11 @@ router.post('/', authMiddleware, async (req, res) => {
     const groupId = uuidv4();
 
     const groups = await sql`
-      INSERT INTO groups (id, name, description, created_by)
-      VALUES (${groupId}, ${name.trim()}, ${description?.trim() || null}, ${req.user.userId})
+      INSERT INTO groups (id, name, description, created_by, is_locked)
+      VALUES (${groupId}, ${name.trim()}, ${description?.trim() || null}, ${req.user.userId}, FALSE)
       RETURNING *
     `;
 
-    // Auto-add creator as member
     const memberId = uuidv4();
     await sql`
       INSERT INTO group_members (id, group_id, user_id)
@@ -213,17 +216,35 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
-// ── GET /api/groups/:groupId/export ──────────────────────────────
-router.get('/:groupId/export', authMiddleware, async (req, res) => {
+// ── GET /api/groups/:groupId/analytics ────────────────────────────
+router.get('/:groupId/analytics', authMiddleware, async (req, res) => {
   try {
     const { groupId } = req.params;
+    const { filter, startDate, endDate } = req.query;
 
     const membership = await sql`
       SELECT 1 FROM group_members WHERE group_id = ${groupId} AND user_id = ${req.user.userId}
     `;
-    if (membership.length === 0) {
-      return res.status(403).json({ error: 'Not a member of this group' });
-    }
+    if (membership.length === 0) return res.status(403).json({ error: 'Not a member of this group' });
+
+    const analytics = await getGroupAnalytics({ groupId, filter, startDate, endDate });
+    if (!analytics) return res.status(404).json({ error: 'Group not found' });
+
+    return res.json({ analytics });
+  } catch (err) {
+    console.error('Analytics error:', err);
+    return res.status(500).json({ error: 'Failed to generate group analytics' });
+  }
+});
+
+// ── GET /api/groups/:groupId/export ──────────────────────────────
+router.get('/:groupId/export', authMiddleware, async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const membership = await sql`
+      SELECT 1 FROM group_members WHERE group_id = ${groupId} AND user_id = ${req.user.userId}
+    `;
+    if (membership.length === 0) return res.status(403).json({ error: 'Not a member of this group' });
 
     const data = await fetchGroupFullData(groupId);
     if (!data) return res.status(404).json({ error: 'Group not found' });
@@ -237,8 +258,34 @@ router.get('/:groupId/export', authMiddleware, async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     return res.send(excelBuffer);
   } catch (err) {
-    console.error('Export error:', err);
-    return res.status(500).json({ error: 'Failed to export group expenses' });
+    console.error('Export Excel error:', err);
+    return res.status(500).json({ error: 'Failed to export group expenses as Excel' });
+  }
+});
+
+// ── GET /api/groups/:groupId/export-pdf ──────────────────────────
+router.get('/:groupId/export-pdf', authMiddleware, async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const membership = await sql`
+      SELECT 1 FROM group_members WHERE group_id = ${groupId} AND user_id = ${req.user.userId}
+    `;
+    if (membership.length === 0) return res.status(403).json({ error: 'Not a member of this group' });
+
+    const data = await fetchGroupFullData(groupId);
+    if (!data) return res.status(404).json({ error: 'Group not found' });
+
+    const pdfBuffer = await generateGroupPdfReport(data);
+    const cleanName = data.group.name.replace(/[^a-zA-Z0-9]/g, '');
+    const dateStr = new Date().toISOString().split('T')[0];
+    const filename = `EasySplit_${cleanName}_${dateStr}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.send(pdfBuffer);
+  } catch (err) {
+    console.error('Export PDF error:', err);
+    return res.status(500).json({ error: 'Failed to export group expenses as PDF' });
   }
 });
 
@@ -250,9 +297,7 @@ router.get('/:groupId', authMiddleware, async (req, res) => {
     const membership = await sql`
       SELECT 1 FROM group_members WHERE group_id = ${groupId} AND user_id = ${req.user.userId}
     `;
-    if (membership.length === 0) {
-      return res.status(403).json({ error: 'Not a member of this group' });
-    }
+    if (membership.length === 0) return res.status(403).json({ error: 'Not a member of this group' });
 
     const groups = await sql`
       SELECT
@@ -260,6 +305,7 @@ router.get('/:groupId', authMiddleware, async (req, res) => {
         g.name,
         g.description,
         g.created_by,
+        g.is_locked,
         g.created_at,
         g.updated_at,
         COALESCE(
@@ -316,11 +362,46 @@ router.get('/:groupId/expenses', authMiddleware, getGroupExpensesHandler);
 // ── GET /api/groups/:groupId/settlements ──────────────────────────
 router.get('/:groupId/settlements', authMiddleware, getGroupSettlementsHandler);
 
+// ── PATCH/PUT /api/groups/:groupId/lock ──────────────────────────
+const handleLockToggle = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { isLocked } = req.body;
+
+    const groupCheck = await sql`SELECT created_by FROM groups WHERE id = ${groupId}`;
+    if (groupCheck.length === 0) return res.status(404).json({ error: 'Group not found' });
+    if (groupCheck[0].created_by !== req.user.userId) {
+      return res.status(403).json({ error: 'Only the group owner can lock or unlock this group' });
+    }
+
+    const updated = await sql`
+      UPDATE groups
+      SET is_locked = ${Boolean(isLocked)}, updated_at = NOW()
+      WHERE id = ${groupId}
+      RETURNING *
+    `;
+
+    const group = formatGroup(updated[0]);
+    emitToGroup(groupId, 'realtime_update', { type: isLocked ? 'group_locked' : 'group_unlocked', groupId });
+    return res.json({ group, message: `Group ${isLocked ? 'locked' : 'unlocked'} successfully` });
+  } catch (err) {
+    console.error('Lock group error:', err);
+    return res.status(500).json({ error: 'Failed to update group lock state' });
+  }
+};
+router.patch('/:groupId/lock', authMiddleware, handleLockToggle);
+router.put('/:groupId/lock', authMiddleware, handleLockToggle);
+
 // ── PUT /api/groups/:groupId ──────────────────────────────────────
 router.put('/:groupId', authMiddleware, async (req, res) => {
   try {
     const { groupId } = req.params;
     const { name, description } = req.body;
+
+    const groupCheck = await sql`SELECT is_locked FROM groups WHERE id = ${groupId}`;
+    if (groupCheck.length > 0 && groupCheck[0].is_locked) {
+      return res.status(403).json({ error: 'This group is finalized and locked. Editing is disabled.' });
+    }
 
     const groups = await sql`
       UPDATE groups SET
@@ -355,21 +436,25 @@ router.delete('/:groupId', authMiddleware, async (req, res) => {
     const data = await fetchGroupFullData(groupId);
     if (!data) return res.status(404).json({ error: 'Group not found' });
 
-    // Step 1: Generate Excel report
+    // Step 1: Generate Excel and PDF reports
     const excelBuffer = await generateGroupExcelReport(data);
+    const pdfBuffer = await generateGroupPdfReport(data);
     const cleanName = data.group.name.replace(/[^a-zA-Z0-9]/g, '');
     const dateStr = new Date().toISOString().split('T')[0];
-    const filename = `EasySplit_${cleanName}_${dateStr}.xlsx`;
+    const excelFilename = `EasySplit_${cleanName}_${dateStr}.xlsx`;
+    const pdfFilename = `EasySplit_${cleanName}_${dateStr}.pdf`;
 
-    // Step 2: Queue email delivery to all current members in background
+    // Step 2: Queue email delivery with BOTH attachments in background
     data.members.forEach((m) => {
       const email = m.email || m.user?.email;
       if (email) {
         sendGroupBackupEmail({
           toEmail: email,
           groupName: data.group.name,
-          excelBuffer: excelBuffer,
-          filename: filename,
+          excelBuffer,
+          pdfBuffer,
+          excelFilename,
+          pdfFilename,
         }).catch((err) => {
           console.error(`Failed to send backup email to ${email}:`, err);
         });
@@ -380,7 +465,7 @@ router.delete('/:groupId', authMiddleware, async (req, res) => {
     await sql`DELETE FROM groups WHERE id = ${groupId}`;
 
     emitToGroup(groupId, 'realtime_update', { type: 'group_deleted', groupId });
-    return res.json({ message: 'Group deleted and backup report emails queued successfully' });
+    return res.json({ message: 'Group deleted and backup reports queued successfully' });
   } catch (err) {
     console.error('Delete group workflow error:', err);
     return res.status(500).json({ error: 'Failed to execute delete group workflow' });
@@ -391,6 +476,11 @@ router.delete('/:groupId', authMiddleware, async (req, res) => {
 router.post('/:groupId/leave', authMiddleware, async (req, res) => {
   try {
     const { groupId } = req.params;
+    const groupCheck = await sql`SELECT is_locked FROM groups WHERE id = ${groupId}`;
+    if (groupCheck.length > 0 && groupCheck[0].is_locked) {
+      return res.status(403).json({ error: 'This group is finalized and locked. Members cannot leave.' });
+    }
+
     await sql`
       DELETE FROM group_members WHERE group_id = ${groupId} AND user_id = ${req.user.userId}
     `;
@@ -408,10 +498,15 @@ async function handleCreateInvitation(req, res) {
     const { groupId } = req.params;
     const { email } = req.body;
 
+    const groupCheck = await sql`SELECT is_locked FROM groups WHERE id = ${groupId}`;
+    if (groupCheck.length > 0 && groupCheck[0].is_locked) {
+      return res.status(403).json({ error: 'This group is finalized and locked. Inviting new members is disabled.' });
+    }
+
     if (!email?.trim()) return res.status(400).json({ error: 'User email is required' });
 
     const targetUsers = await sql`SELECT id, name, email, avatar_id FROM users WHERE LOWER(email) = LOWER(${email.trim()})`;
-    if (targetUsers.length === 0) return res.status(404).json({ error: 'User with this email not found' });
+    if (targetUsers.length === 0) return res.status(404).json({ error: 'This email is not registered on EasySplit' });
 
     const receiver = targetUsers[0];
     if (receiver.id === req.user.userId) return res.status(400).json({ error: 'Cannot invite yourself' });
