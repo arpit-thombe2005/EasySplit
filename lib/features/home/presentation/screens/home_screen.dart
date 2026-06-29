@@ -109,11 +109,6 @@ class HomeScreen extends ConsumerWidget {
 
                     const SizedBox(height: 28),
 
-                    // Quick Actions
-                    _QuickActions().animate(delay: 200.ms).fadeIn(duration: 400.ms),
-
-                    const SizedBox(height: 28),
-
                     // Groups section
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -131,22 +126,25 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
 
-            // Groups list
+            // Groups list (only show active groups where myBalance != 0)
             groupsAsync.when(
               data: (groups) {
-                if (groups.isEmpty) {
+                final activeGroups = groups.where((g) => g.myBalance.abs() > 0.01).toList();
+
+                if (activeGroups.isEmpty) {
                   return SliverToBoxAdapter(
-                    child: EmptyState(
-                      icon: Icons.group_outlined,
-                      title: 'No groups yet',
-                      subtitle: 'Create a group to start splitting expenses with friends.',
-                      actionLabel: 'Create Group',
-                      onAction: () => context.push(AppRoutes.createGroup),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      child: EmptyState(
+                        icon: Icons.check_circle_outline_rounded,
+                        title: 'All settled up!',
+                        subtitle: 'You have no active debts or pending balances in any group.',
+                      ),
                     ),
                   );
                 }
-                // Show top 5 groups on home
-                final preview = groups.take(5).toList();
+
+                final preview = activeGroups.take(5).toList();
                 return SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   sliver: SliverList.separated(
@@ -155,13 +153,8 @@ class HomeScreen extends ConsumerWidget {
                     itemBuilder: (ctx, i) => GroupCard(
                       group: preview[i],
                       currency: currency,
-                      onTap: () => context.push(
-                        AppRoutes.groupDetail.replaceAll(':groupId', preview[i].id),
-                      ),
-                    )
-                        .animate(delay: Duration(milliseconds: 300 + i * 50))
-                        .fadeIn(duration: 400.ms)
-                        .slideX(begin: 0.05, duration: 400.ms),
+                      onTap: null, // Clicking group name on Home screen does not redirect
+                    ),
                   ),
                 );
               },
@@ -209,11 +202,6 @@ class _BalanceSummaryCard extends StatelessWidget {
     this.isDark = false,
   });
 
-  const _BalanceSummaryCard.skeleton()
-      : summary = null,
-        currency = 'INR',
-        isDark = false;
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -243,150 +231,75 @@ class _BalanceSummaryCard extends StatelessWidget {
         children: [
           Text(
             'Net Balance',
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: cs.onPrimary.withValues(alpha: 0.7),
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: cs.onPrimary.withValues(alpha: 0.8),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             net.abs().toCurrency(currencyCode: currency),
             style: theme.textTheme.headlineMedium?.copyWith(
               color: cs.onPrimary,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.bold,
             ),
           ),
+          const SizedBox(height: 2),
           Text(
-            isPositive
-                ? 'You are owed overall'
-                : 'You owe overall',
+            net == 0
+                ? 'Everything is settled'
+                : (isPositive ? 'You are owed overall' : 'You owe overall'),
             style: theme.textTheme.bodySmall?.copyWith(
-              color: cs.onPrimary.withValues(alpha: 0.7),
+              color: cs.onPrimary.withValues(alpha: 0.8),
             ),
           ),
           const SizedBox(height: 16),
+          Divider(color: cs.onPrimary.withValues(alpha: 0.2), height: 1),
+          const SizedBox(height: 12),
           Row(
             children: [
-              _SummaryItem(
-                label: 'You owe',
-                amount: summary!.totalOwed.toCurrency(currencyCode: currency),
-                color: cs.onPrimary.withValues(alpha: 0.85),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'You owe',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: cs.onPrimary.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    Text(
+                      summary!.totalOwed.toCurrency(currencyCode: currency),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: cs.onPrimary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(width: 24),
-              _SummaryItem(
-                label: 'You\'re owed',
-                amount: summary!.totalOwedTo.toCurrency(currencyCode: currency),
-                color: cs.onPrimary.withValues(alpha: 0.85),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "You're owed",
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: cs.onPrimary.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    Text(
+                      summary!.totalOwedToYou.toCurrency(currencyCode: currency),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: cs.onPrimary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _SummaryItem extends StatelessWidget {
-  final String label;
-  final String amount;
-  final Color color;
-
-  const _SummaryItem({required this.label, required this.amount, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: cs.onPrimary.withValues(alpha: 0.6),
-          ),
-        ),
-        Text(
-          amount,
-          style: theme.textTheme.titleSmall?.copyWith(
-            color: color,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _QuickActions extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _QuickActionItem(
-          icon: Icons.add_rounded,
-          label: 'Add Expense',
-          onTap: () {
-            // Navigates to groups first to select context
-            context.go(AppRoutes.groups);
-          },
-        ),
-        const SizedBox(width: 12),
-        _QuickActionItem(
-          icon: Icons.group_add_outlined,
-          label: 'New Group',
-          onTap: () => context.push(AppRoutes.createGroup),
-        ),
-        const SizedBox(width: 12),
-        _QuickActionItem(
-          icon: Icons.sync_alt_rounded,
-          label: 'Settlements',
-          onTap: () => context.push(AppRoutes.settlementHistory),
-        ),
-      ],
-    );
-  }
-}
-
-class _QuickActionItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _QuickActionItem({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Column(
-            children: [
-              Icon(icon, size: 22, color: cs.primary),
-              const SizedBox(height: 6),
-              Text(
-                label,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: cs.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

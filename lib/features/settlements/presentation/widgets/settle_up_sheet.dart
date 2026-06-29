@@ -185,17 +185,24 @@ class _SettleUpSheetState extends ConsumerState<SettleUpSheet> {
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
+              runSpacing: 8,
               children: _methods.map((m) {
                 final isSelected = _selectedMethod == m;
                 return ChoiceChip(
                   label: Text(m),
                   selected: isSelected,
+                  showCheckmark: false,
                   onSelected: (_) => setState(() => _selectedMethod = m),
                   selectedColor: cs.primary,
+                  backgroundColor: cs.surfaceContainerHigh,
+                  side: BorderSide(
+                    color: isSelected ? cs.primary : cs.outline.withValues(alpha: 0.3),
+                  ),
                   labelStyle: TextStyle(
                     color: isSelected ? cs.onPrimary : cs.onSurface,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                   ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 );
               }).toList(),
             ),

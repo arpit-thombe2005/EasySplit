@@ -317,21 +317,21 @@ class GroupDetailScreen extends ConsumerWidget {
                               ],
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: isOwner ? cs.primary : cs.surfaceContainerHigh,
-                              border: Border.all(color: cs.outline.withValues(alpha: 0.3)),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              isOwner ? 'Owner' : 'Accepted',
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: isOwner ? cs.onPrimary : cs.onSurface,
-                                fontWeight: FontWeight.w600,
+                          if (isOwner)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: cs.primary,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                'Owner',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: cs.onPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
-                          ),
                         ],
                       ),
                     ),
@@ -761,30 +761,29 @@ class _SettlementSummaryCard extends ConsumerWidget {
                           ),
                         ),
                         if (isOwedByMe)
-                          SizedBox(
-                            height: 36,
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                showModalBottomSheet(
-                                  context: context,
-                                  isScrollControlled: true,
-                                  builder: (_) => SettleUpSheet(
-                                    groupId: groupId,
-                                    receiverId: d.toUserId,
-                                    receiverName: d.toUserName,
-                                    outstandingAmount: d.amount,
-                                    currency: currency,
-                                  ),
-                                );
-                              },
-                              icon: const Icon(Icons.payment_rounded, size: 16),
-                              label: const Text('Settle Up'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: cs.primary,
-                                foregroundColor: cs.onPrimary,
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              ),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                builder: (_) => SettleUpSheet(
+                                  groupId: groupId,
+                                  receiverId: d.toUserId,
+                                  receiverName: d.toUserName,
+                                  outstandingAmount: d.amount,
+                                  currency: currency,
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.payment_rounded, size: 16),
+                            label: const Text('Settle Up'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: cs.primary,
+                              foregroundColor: cs.onPrimary,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                              minimumSize: const Size(0, 36),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
                           )
                         else
