@@ -15,6 +15,9 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
   tls: {
     rejectUnauthorized: false,
   },
@@ -86,6 +89,7 @@ async function sendOtpEmail(email, otp) {
       const errText = await res.text();
       throw new Error(`Resend API error (${res.status}): ${errText}`);
     }
+    console.log(`✉️ OTP email sent via Resend API to ${email}`);
     return;
   }
 
@@ -108,24 +112,21 @@ async function sendOtpEmail(email, otp) {
       const errText = await res.text();
       throw new Error(`Brevo API error (${res.status}): ${errText}`);
     }
+    console.log(`✉️ OTP email sent via Brevo API to ${email}`);
     return;
   }
 
   // 3. Standard Nodemailer SMTP
   const mailOptions = {
-    from: `EasySplit <${senderEmail}>`,
+    from: `"EasySplit" <${senderEmail}>`,
     to: email,
     subject: subject,
     html: htmlContent,
     text: `Your EasySplit verification code is: ${otp}\n\nThis code expires in 10 minutes.`,
   };
 
-  const sendPromise = transporter.sendMail(mailOptions);
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('SMTP timeout')), 15000)
-  );
-
-  await Promise.race([sendPromise, timeoutPromise]);
+  const info = await transporter.sendMail(mailOptions);
+  console.log(`✉️ OTP email sent via SMTP to ${email} (MessageID: ${info.messageId})`);
 }
 
 // ── POST /api/auth/send-otp ───────────────────────────────────────
@@ -149,11 +150,14 @@ router.post('/send-otp', async (req, res) => {
       DO UPDATE SET otp = ${otp}, expires_at = ${expiresAt}, created_at = NOW()
     `;
 
-    // Fire and forget email dispatch so HTTP endpoint responds immediately
-    sendOtpEmail(normalizedEmail, otp).catch(err => {
-      console.error(`⚠️ SMTP dispatch note for ${normalizedEmail}:`, err.message);
-    });
     console.log(`🔑 OTP generated for ${normalizedEmail}: ${otp}`);
+
+    // Attempt email dispatch
+    try {
+      await sendOtpEmail(normalizedEmail, otp);
+    } catch (mailErr) {
+      console.error(`❌ SMTP dispatch failed for ${normalizedEmail}:`, mailErr.message);
+    }
 
     return res.json({ message: 'OTP sent successfully', email: normalizedEmail });
   } catch (err) {
