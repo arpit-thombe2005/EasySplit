@@ -504,16 +504,15 @@ class GroupDetailScreen extends ConsumerWidget {
                         ),
                       );
                     }
-                    return ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: expenses.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (ctx, i) => ExpenseCard(
-                        expense: expenses[i],
-                        currentUserId: user?.id ?? '',
-                        currency: user?.currency ?? 'INR',
-                      ),
+                    return Column(
+                      children: expenses.map((exp) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: ExpenseCard(
+                          expense: exp,
+                          currentUserId: user?.id ?? '',
+                          currency: user?.currency ?? 'INR',
+                        ),
+                      )).toList(),
                     );
                   },
                   loading: () => const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator())),
