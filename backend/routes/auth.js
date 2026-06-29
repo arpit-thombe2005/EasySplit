@@ -183,31 +183,26 @@ router.post('/verify-otp', async (req, res) => {
     const normalizedEmail = email.toLowerCase().trim();
     const cleanOtp = otp.trim();
 
-    // Support master demo OTP 123456 for instant testing and cloud fallback
-    let isMasterOtp = cleanOtp === '123456';
+    // Fetch OTP record
+    const otpRecords = await sql`
+      SELECT * FROM otps 
+      WHERE email = ${normalizedEmail} AND expires_at > NOW()
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
 
-    if (!isMasterOtp) {
-      // Fetch OTP record
-      const otpRecords = await sql`
-        SELECT * FROM otps 
-        WHERE email = ${normalizedEmail} AND expires_at > NOW()
-        ORDER BY created_at DESC
-        LIMIT 1
-      `;
-
-      if (otpRecords.length === 0) {
-        return res.status(400).json({ error: 'OTP has expired or was not requested. Try using 123456.' });
-      }
-
-      const otpRecord = otpRecords[0];
-
-      if (otpRecord.otp !== cleanOtp) {
-        return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
-      }
-
-      // OTP verified — delete it
-      await sql`DELETE FROM otps WHERE email = ${normalizedEmail}`;
+    if (otpRecords.length === 0) {
+      return res.status(400).json({ error: 'OTP has expired or was not requested. Please request a new one.' });
     }
+
+    const otpRecord = otpRecords[0];
+
+    if (otpRecord.otp !== cleanOtp) {
+      return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
+    }
+
+    // OTP verified — delete it
+    await sql`DELETE FROM otps WHERE email = ${normalizedEmail}`;
 
     // Find or create user
     let userRecords = await sql`
