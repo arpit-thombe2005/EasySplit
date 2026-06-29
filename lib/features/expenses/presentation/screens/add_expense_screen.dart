@@ -138,14 +138,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Category & Split Type row
-            Row(
-              children: [
-                Expanded(child: _CategoryPicker(state: state, ref: ref)),
-                const SizedBox(width: 12),
-                Expanded(child: _SplitTypePicker(state: state, ref: ref)),
-              ],
-            ),
+            // Category
+            _CategoryPicker(state: state, ref: ref),
             const SizedBox(height: 16),
 
             // Date picker
@@ -368,71 +362,4 @@ class _CategoryPicker extends StatelessWidget {
   }
 }
 
-class _SplitTypePicker extends StatelessWidget {
-  final AddExpenseState state;
-  final WidgetRef ref;
 
-  const _SplitTypePicker({required this.state, required this.ref});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return GestureDetector(
-      onTap: () async {
-        final selected = await showModalBottomSheet<SplitType>(
-          context: context,
-          builder: (ctx) => ListView(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text('Split Type', style: Theme.of(ctx).textTheme.titleMedium),
-              ),
-              ...SplitType.values.map((t) => ListTile(
-                    title: Text(t.name.toUpperCase()),
-                    subtitle: Text(_splitDescription(t)),
-                    trailing: t == state.splitType
-                        ? Icon(Icons.check_rounded, color: cs.primary)
-                        : null,
-                    onTap: () => Navigator.pop(ctx, t),
-                  )),
-            ],
-          ),
-        );
-        if (selected != null) {
-          ref.read(addExpenseNotifierProvider.notifier).setSplitType(selected);
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.call_split_rounded, size: 18, color: cs.secondary),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                state.splitType.name,
-                style: Theme.of(context).textTheme.bodyMedium,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _splitDescription(SplitType t) {
-    switch (t) {
-      case SplitType.equal: return 'Split equally';
-      case SplitType.exact: return 'Enter exact amounts';
-      case SplitType.percentage: return 'By percentage';
-      case SplitType.shares: return 'By shares / ratio';
-    }
-  }
-}
