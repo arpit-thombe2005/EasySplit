@@ -262,17 +262,7 @@ class GroupDetailScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(20),
           children: [
             // Members & Invitations
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Members', style: theme.textTheme.titleMedium),
-                TextButton.icon(
-                  onPressed: () => _showAddMemberSheet(context, ref, groupId),
-                  icon: const Icon(Icons.person_add_outlined, size: 18),
-                  label: const Text('Add Member'),
-                ),
-              ],
-            ),
+            Text('Members', style: theme.textTheme.titleMedium),
             const SizedBox(height: 12),
 
             // Active Members list

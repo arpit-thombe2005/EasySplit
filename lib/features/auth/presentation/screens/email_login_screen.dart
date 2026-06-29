@@ -142,35 +142,7 @@ class _EmailLoginScreenState extends ConsumerState<EmailLoginScreen> {
                     .animate(delay: 250.ms)
                     .fadeIn(duration: 400.ms),
 
-                const Spacer(),
-
-                // Sign up link
-                Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        "Don't have an account? ",
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: cs.secondary,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () => context.push(AppRoutes.signUp),
-                        child: Text(
-                          'Sign up',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-                    .animate(delay: 300.ms)
-                    .fadeIn(duration: 400.ms),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
               ],
             ),
           ),
