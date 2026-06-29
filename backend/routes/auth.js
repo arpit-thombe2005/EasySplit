@@ -7,27 +7,18 @@ import { v4 as uuidv4 } from 'uuid';
 const router = express.Router();
 
 // ── Nodemailer Transporter ────────────────────────────────────────
-const isGmail = process.env.SMTP_HOST?.includes('gmail') || process.env.SMTP_USER?.includes('gmail');
-
-const transporter = nodemailer.createTransport(
-  isGmail
-    ? {
-        service: 'gmail',
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      }
-    : {
-        host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: parseInt(process.env.SMTP_PORT || '465'),
-        secure: process.env.SMTP_SECURE === 'true',
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      }
-);
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: process.env.SMTP_SECURE === 'true',
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+  tls: {
+    rejectUnauthorized: false,
+  },
+});
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -44,7 +35,7 @@ function generateToken(userId) {
 }
 
 async function sendOtpEmail(email, otp) {
-  const senderEmail = process.env.SMTP_USER || 'arpitthombe2005@gmail.com';
+  const senderEmail = process.env.SMTP_USER || 'easysplit2026@gmail.com';
   const subject = `${otp} is your EasySplit verification code`;
   const htmlContent = `
     <!DOCTYPE html>
