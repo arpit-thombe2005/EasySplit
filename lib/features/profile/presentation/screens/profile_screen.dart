@@ -22,13 +22,6 @@ class ProfileScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () => _showEditProfileSheet(context, ref, user?.name ?? ''),
-            tooltip: 'Edit Profile',
-          ),
-        ],
       ),
       body: ListView(
         children: [
