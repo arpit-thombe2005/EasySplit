@@ -7,27 +7,18 @@ import { v4 as uuidv4 } from 'uuid';
 const router = express.Router();
 
 // ── Nodemailer Transporter ────────────────────────────────────────
-const isGmail = process.env.SMTP_HOST?.includes('gmail') || process.env.SMTP_USER?.includes('gmail');
-
-const transporter = nodemailer.createTransport(
-  isGmail
-    ? {
-        service: 'gmail',
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      }
-    : {
-        host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: parseInt(process.env.SMTP_PORT || '465'),
-        secure: process.env.SMTP_SECURE === 'true',
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      }
-);
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.SMTP_PORT || '465'),
+  secure: true, // Use SSL on port 465 for reliable cloud host delivery
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+  tls: {
+    rejectUnauthorized: false,
+  },
+});
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -83,7 +74,7 @@ async function sendOtpEmail(email, otp) {
 
   const sendPromise = transporter.sendMail(mailOptions);
   const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('SMTP timeout')), 15000)
+    setTimeout(() => reject(new Error('SMTP timeout')), 20000)
   );
 
   await Promise.race([sendPromise, timeoutPromise]);
