@@ -44,8 +44,9 @@ function generateToken(userId) {
 }
 
 async function sendOtpEmail(email, otp) {
+  const senderEmail = process.env.SMTP_USER || 'arpitthombe2005@gmail.com';
   const mailOptions = {
-    from: process.env.EMAIL_FROM || 'EasySplit <noreply@easysplit.app>',
+    from: `EasySplit <${senderEmail}>`,
     to: email,
     subject: `${otp} is your EasySplit verification code`,
     html: `
