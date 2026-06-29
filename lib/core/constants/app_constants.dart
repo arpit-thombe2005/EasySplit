@@ -10,7 +10,7 @@ class AppConstants {
   // API
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:3000/api',
+    defaultValue: 'https://easysplit-p6z9.onrender.com/api',
   );
 
   // Storage Keys
