@@ -288,7 +288,7 @@ class _BalanceSummaryCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      summary!.totalOwedToYou.toCurrency(currencyCode: currency),
+                      summary!.totalOwedTo.toCurrency(currencyCode: currency),
                       style: theme.textTheme.titleSmall?.copyWith(
                         color: cs.onPrimary,
                         fontWeight: FontWeight.bold,
