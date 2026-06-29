@@ -402,15 +402,15 @@ router.post('/:groupId/leave', authMiddleware, async (req, res) => {
   }
 });
 
-// ── POST /api/groups/:groupId/members ─────────────────────────────
-router.post('/:groupId/members', authMiddleware, async (req, res) => {
+// ── Group Invitation / Member Routes ──────────────────────────────
+async function handleCreateInvitation(req, res) {
   try {
     const { groupId } = req.params;
     const { email } = req.body;
 
     if (!email?.trim()) return res.status(400).json({ error: 'User email is required' });
 
-    const targetUsers = await sql`SELECT id, name, email FROM users WHERE LOWER(email) = LOWER(${email.trim()})`;
+    const targetUsers = await sql`SELECT id, name, email, avatar_id FROM users WHERE LOWER(email) = LOWER(${email.trim()})`;
     if (targetUsers.length === 0) return res.status(404).json({ error: 'User with this email not found' });
 
     const receiver = targetUsers[0];
@@ -427,14 +427,15 @@ router.post('/:groupId/members', authMiddleware, async (req, res) => {
     if (existingInv.length > 0) return res.status(400).json({ error: 'Invitation already pending for this user' });
 
     const invitationId = uuidv4();
-    await sql`
+    const inserted = await sql`
       INSERT INTO group_invitations (id, group_id, sender_id, receiver_id, status)
       VALUES (${invitationId}, ${groupId}, ${req.user.userId}, ${receiver.id}, 'pending')
+      RETURNING *
     `;
 
     const groups = await sql`SELECT name FROM groups WHERE id = ${groupId}`;
     const groupName = groups[0]?.name || 'a group';
-    const senderUser = await sql`SELECT name FROM users WHERE id = ${req.user.userId}`;
+    const senderUser = await sql`SELECT name, avatar_id FROM users WHERE id = ${req.user.userId}`;
     const senderName = senderUser[0]?.name || 'Someone';
 
     const notifId = uuidv4();
@@ -453,10 +454,79 @@ router.post('/:groupId/members', authMiddleware, async (req, res) => {
     emitToUser(receiver.id, 'realtime_update', { type: 'invitation_received', groupId, invitationId });
     emitToGroup(groupId, 'realtime_update', { type: 'invitation_sent', groupId });
 
-    return res.status(201).json({ message: 'Invitation sent successfully', invitationId });
+    const invitationObj = formatGroupInvitation({
+      ...inserted[0],
+      group_name: groupName,
+      sender_name: senderName,
+      sender_avatar_id: senderUser[0]?.avatar_id,
+      receiver_name: receiver.name,
+      receiver_email: receiver.email,
+      receiver_avatar_id: receiver.avatar_id,
+    });
+
+    const mockMember = formatMember({
+      id: `${groupId}-${receiver.id}`,
+      group_id: groupId,
+      user_id: receiver.id,
+      joined_at: new Date().toISOString(),
+      user: receiver,
+    });
+
+    return res.status(201).json({
+      message: 'Invitation sent successfully',
+      invitationId,
+      invitation: invitationObj,
+      member: mockMember,
+    });
+  } catch (err) {
+    console.error('Create invitation error:', err);
+    return res.status(500).json({ error: 'Failed to send invitation' });
+  }
+}
+
+router.post('/:groupId/invitations', authMiddleware, handleCreateInvitation);
+router.post('/:groupId/members', authMiddleware, handleCreateInvitation);
+
+router.get('/:groupId/invitations', authMiddleware, async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const invitations = await sql`
+      SELECT gi.*, g.name AS group_name, u_sender.name AS sender_name, u_sender.avatar_id AS sender_avatar_id, u_rec.name AS receiver_name, u_rec.email AS receiver_email, u_rec.avatar_id AS receiver_avatar_id
+      FROM group_invitations gi
+      JOIN groups g ON gi.group_id = g.id
+      JOIN users u_sender ON gi.sender_id = u_sender.id
+      JOIN users u_rec ON gi.receiver_id = u_rec.id
+      WHERE gi.group_id = ${groupId}
+      ORDER BY gi.created_at DESC
+    `;
+    return res.json({ invitations: invitations.map(formatGroupInvitation) });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: 'Failed to add member' });
+    return res.status(500).json({ error: 'Failed to fetch group invitations' });
+  }
+});
+
+router.post('/:groupId/invitations/:invitationId/resend', authMiddleware, async (req, res) => {
+  try {
+    const { groupId, invitationId } = req.params;
+    await sql`UPDATE group_invitations SET updated_at = NOW() WHERE id = ${invitationId} AND group_id = ${groupId}`;
+    emitToGroup(groupId, 'realtime_update', { type: 'invitation_resent', groupId, invitationId });
+    return res.json({ message: 'Invitation resent successfully' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to resend invitation' });
+  }
+});
+
+router.delete('/:groupId/invitations/:invitationId', authMiddleware, async (req, res) => {
+  try {
+    const { groupId, invitationId } = req.params;
+    await sql`DELETE FROM group_invitations WHERE id = ${invitationId} AND group_id = ${groupId}`;
+    emitToGroup(groupId, 'realtime_update', { type: 'invitation_cancelled', groupId, invitationId });
+    return res.json({ message: 'Invitation cancelled successfully' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to cancel invitation' });
   }
 });
 
