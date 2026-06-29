@@ -67,7 +67,7 @@ async function enrichExpenses(expenses) {
 }
 
 // ── GET /api/groups/:groupId/expenses ─────────────────────────────
-async function getGroupExpensesHandler(req, res) {
+export async function getGroupExpensesHandler(req, res) {
   try {
     const { groupId } = req.params;
     const page = parseInt(req.query.page || '1');
