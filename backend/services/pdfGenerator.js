@@ -81,20 +81,23 @@ export async function generateGroupPdfReport({ group, members, expenses, settlem
       doc.on('error', (err) => reject(err));
 
       const primaryColor = '#1E1E1E';
-      const secondaryColor = '#555555';
+      const secondaryColor = '#4B5563';
       const accentColor = '#2563EB';
-      const lightBg = '#F8FAFC';
+      const tableHeaderBg = '#E2E8F0';
+      const tableAltBg = '#F8FAFC';
+
+      const contentWidth = doc.page.width - 80;
 
       // ── Cover / Header ──────────────────────────────────────────────
       doc.rect(0, 0, doc.page.width, 100).fill(primaryColor);
-      doc.fillColor('#FFFFFF').fontSize(26).font('Helvetica-Bold').text('EasySplit Report', 40, 30);
-      doc.fontSize(14).font('Helvetica').text(`Group: ${group.name}`, 40, 65);
+      doc.fillColor('#FFFFFF').fontSize(24).font('Helvetica-Bold').text('EasySplit Financial Report', 40, 30);
+      doc.fontSize(13).font('Helvetica').text(`Group: ${group.name}`, 40, 64);
 
       let y = 120;
 
       // ── Group Information ───────────────────────────────────────────
-      doc.fillColor(primaryColor).fontSize(16).font('Helvetica-Bold').text('1. Group Information', 40, y);
-      y += 25;
+      doc.fillColor(primaryColor).fontSize(14).font('Helvetica-Bold').text('1. Group Information', 40, y);
+      y += 20;
 
       const totalExpAmt = expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
       const owner = members.find((m) => (m.user_id || m.userId) === group.created_by) || members[0];
@@ -103,7 +106,7 @@ export async function generateGroupPdfReport({ group, members, expenses, settlem
       const infoRows = [
         ['Group Name:', group.name, 'Created By:', ownerName],
         ['Export Date:', new Date().toISOString().split('T')[0], 'Total Members:', `${members.length}`],
-        ['Total Expenses:', `₹${totalExpAmt.toFixed(2)}`, 'Total Settlements:', `${settlements.length}`],
+        ['Total Expenses:', `INR ${totalExpAmt.toFixed(2)}`, 'Total Settlements:', `${settlements.length}`],
       ];
 
       doc.fontSize(10).font('Helvetica');
@@ -121,50 +124,63 @@ export async function generateGroupPdfReport({ group, members, expenses, settlem
       doc.fillColor(primaryColor).fontSize(14).font('Helvetica-Bold').text('2. Member Roster', 40, y);
       y += 20;
 
-      doc.rect(40, y, doc.page.width - 80, 20).fill('#E2E8F0');
+      doc.rect(40, y, contentWidth, 22).fill(tableHeaderBg);
       doc.fillColor(primaryColor).fontSize(10).font('Helvetica-Bold');
-      doc.text('Name', 48, y + 5);
-      doc.text('Email', 220, y + 5);
-      doc.text('Role', 450, y + 5);
-      y += 22;
+      doc.text('Name', 48, y + 6);
+      doc.text('Email', 220, y + 6);
+      doc.text('Role', 450, y + 6);
+      y += 24;
 
-      doc.font('Helvetica');
-      members.forEach((m) => {
+      doc.font('Helvetica').fontSize(10);
+      members.forEach((m, idx) => {
+        if (idx % 2 === 1) doc.rect(40, y - 2, contentWidth, 20).fill(tableAltBg);
         const isOwner = (m.user_id || m.userId) === group.created_by;
         doc.fillColor(primaryColor).text(m.name || m.user?.name || 'Member', 48, y);
         doc.fillColor(secondaryColor).text(m.email || m.user?.email || 'N/A', 220, y);
-        doc.fillColor(isOwner ? accentColor : primaryColor).text(isOwner ? 'Owner' : 'Member', 450, y);
-        y += 18;
+        doc.fillColor(isOwner ? accentColor : primaryColor).font(isOwner ? 'Helvetica-Bold' : 'Helvetica').text(isOwner ? 'Owner' : 'Member', 450, y);
+        y += 20;
       });
 
-      y += 20;
+      y += 15;
 
       // ── Expense Ledger ──────────────────────────────────────────────
       if (y > 650) { doc.addPage(); y = 40; }
       doc.fillColor(primaryColor).fontSize(14).font('Helvetica-Bold').text('3. Expense History', 40, y);
       y += 20;
 
-      doc.rect(40, y, doc.page.width - 80, 20).fill('#E2E8F0');
+      doc.rect(40, y, contentWidth, 22).fill(tableHeaderBg);
       doc.fillColor(primaryColor).fontSize(9).font('Helvetica-Bold');
-      doc.text('Title', 48, y + 5, { width: 140 });
-      doc.text('Category', 190, y + 5, { width: 90 });
-      doc.text('Paid By', 280, y + 5, { width: 110 });
-      doc.text('Amount (₹)', 400, y + 5, { width: 70, align: 'right' });
-      doc.text('Date', 480, y + 5, { width: 70, align: 'right' });
-      y += 22;
+      doc.text('Title', 48, y + 6, { width: 135 });
+      doc.text('Category', 190, y + 6, { width: 85 });
+      doc.text('Paid By', 280, y + 6, { width: 105 });
+      doc.text('Amount (INR)', 390, y + 6, { width: 80, align: 'right' });
+      doc.text('Date', 475, y + 6, { width: 75, align: 'right' });
+      y += 24;
 
       doc.font('Helvetica').fontSize(9);
-      expenses.forEach((e) => {
-        if (y > 750) { doc.addPage(); y = 40; }
+      expenses.forEach((e, idx) => {
+        if (y > 750) {
+          doc.addPage();
+          y = 40;
+          doc.rect(40, y, contentWidth, 22).fill(tableHeaderBg);
+          doc.fillColor(primaryColor).fontSize(9).font('Helvetica-Bold');
+          doc.text('Title', 48, y + 6, { width: 135 });
+          doc.text('Category', 190, y + 6, { width: 85 });
+          doc.text('Paid By', 280, y + 6, { width: 105 });
+          doc.text('Amount (INR)', 390, y + 6, { width: 80, align: 'right' });
+          doc.text('Date', 475, y + 6, { width: 75, align: 'right' });
+          y += 24;
+        }
+        if (idx % 2 === 1) doc.rect(40, y - 2, contentWidth, 20).fill(tableAltBg);
         doc.fillColor(primaryColor).text(e.title, 48, y, { width: 135 });
         doc.fillColor(secondaryColor).text(e.category || 'Other', 190, y, { width: 85 });
-        doc.fillColor(primaryColor).text(e.paid_by_name || e.paidByUser?.name || 'Member', 280, y, { width: 110 });
-        doc.font('Helvetica-Bold').text(parseFloat(e.amount).toFixed(2), 400, y, { width: 70, align: 'right' });
-        doc.font('Helvetica').fillColor(secondaryColor).text(e.expense_date ? new Date(e.expense_date).toISOString().split('T')[0] : 'N/A', 480, y, { width: 70, align: 'right' });
-        y += 18;
+        doc.fillColor(primaryColor).text(e.paid_by_name || e.paidByUser?.name || 'Member', 280, y, { width: 105 });
+        doc.font('Helvetica-Bold').text(parseFloat(e.amount).toFixed(2), 390, y, { width: 80, align: 'right' });
+        doc.font('Helvetica').fillColor(secondaryColor).text(e.expense_date ? new Date(e.expense_date).toISOString().split('T')[0] : 'N/A', 475, y, { width: 75, align: 'right' });
+        y += 20;
       });
 
-      y += 20;
+      y += 15;
 
       // ── Current Balances & Debt Simplification ──────────────────────
       if (y > 600) { doc.addPage(); y = 40; }
@@ -176,21 +192,31 @@ export async function generateGroupPdfReport({ group, members, expenses, settlem
         doc.fillColor(secondaryColor).fontSize(10).font('Helvetica-Oblique').text('🎉 All balances are completely settled!', 48, y);
         y += 20;
       } else {
-        doc.rect(40, y, doc.page.width - 80, 20).fill('#E2E8F0');
+        doc.rect(40, y, contentWidth, 22).fill(tableHeaderBg);
         doc.fillColor(primaryColor).fontSize(9).font('Helvetica-Bold');
-        doc.text('Payer (Who Pays)', 48, y + 5);
-        doc.text('Receiver (Who Receives)', 240, y + 5);
-        doc.text('Amount (₹)', 440, y + 5, { align: 'right' });
-        y += 22;
+        doc.text('Payer (Who Pays)', 48, y + 6, { width: 180 });
+        doc.text('Receiver (Who Receives)', 230, y + 6, { width: 180 });
+        doc.text('Amount (INR)', 420, y + 6, { width: 130, align: 'right' });
+        y += 24;
 
         doc.font('Helvetica').fontSize(9);
-        simplified.forEach((s) => {
-          if (y > 750) { doc.addPage(); y = 40; }
-          doc.fillColor(primaryColor).text(s.fromUserName, 48, y);
-          doc.text(s.toUserName, 240, y);
-          doc.font('Helvetica-Bold').fillColor('#16A34A').text(`₹${s.amount.toFixed(2)}`, 440, y, { align: 'right' });
+        simplified.forEach((s, idx) => {
+          if (y > 750) {
+            doc.addPage();
+            y = 40;
+            doc.rect(40, y, contentWidth, 22).fill(tableHeaderBg);
+            doc.fillColor(primaryColor).fontSize(9).font('Helvetica-Bold');
+            doc.text('Payer (Who Pays)', 48, y + 6, { width: 180 });
+            doc.text('Receiver (Who Receives)', 230, y + 6, { width: 180 });
+            doc.text('Amount (INR)', 420, y + 6, { width: 130, align: 'right' });
+            y += 24;
+          }
+          if (idx % 2 === 1) doc.rect(40, y - 2, contentWidth, 20).fill(tableAltBg);
+          doc.fillColor(primaryColor).text(s.fromUserName, 48, y, { width: 180 });
+          doc.text(s.toUserName, 230, y, { width: 180 });
+          doc.font('Helvetica-Bold').fillColor('#16A34A').text(`INR ${s.amount.toFixed(2)}`, 420, y, { width: 130, align: 'right' });
           doc.font('Helvetica');
-          y += 18;
+          y += 20;
         });
       }
 
@@ -198,10 +224,10 @@ export async function generateGroupPdfReport({ group, members, expenses, settlem
       const range = doc.bufferedPageRange();
       for (let i = range.start; i < range.start + range.count; i++) {
         doc.switchToPage(i);
-        doc.rect(40, doc.page.height - 35, doc.page.width - 80, 0.5).fill('#CBD5E1');
+        doc.rect(40, doc.page.height - 35, contentWidth, 0.5).fill('#CBD5E1');
         doc.fillColor(secondaryColor).fontSize(8).font('Helvetica');
         doc.text('EasySplit Expense Settlement Report', 40, doc.page.height - 25);
-        doc.text(`Page ${i + 1} of ${range.count}`, doc.page.width - 120, doc.page.height - 25, { align: 'right' });
+        doc.text(`Page ${i + 1} of ${range.count}`, doc.page.width - 160, doc.page.height - 25, { width: 120, align: 'right' });
       }
 
       doc.end();
