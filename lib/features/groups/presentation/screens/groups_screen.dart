@@ -510,13 +510,6 @@ class GroupDetailScreen extends ConsumerWidget {
                 ),
           ],
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => context.push(
-            AppRoutes.addExpense.replaceAll(':groupId', groupId),
-          ),
-          icon: const Icon(Icons.add_rounded),
-          label: const Text('Add Expense'),
-        ),
       ),
       loading: () => const Scaffold(body: InlineLoader()),
       error: (e, _) => Scaffold(
