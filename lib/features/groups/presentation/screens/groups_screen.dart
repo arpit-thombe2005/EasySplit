@@ -250,7 +250,7 @@ class GroupDetailScreen extends ConsumerWidget {
                     final cleanName = group.name.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
                     final dateStr = DateTime.now().toIso8601String().split('T')[0];
                     final filename = 'EasySplit_${cleanName}_$dateStr.xlsx';
-                    downloadFile(bytes, filename);
+                    await downloadFile(bytes, filename);
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Report exported: $filename')),
@@ -275,7 +275,7 @@ class GroupDetailScreen extends ConsumerWidget {
                     final cleanName = group.name.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
                     final dateStr = DateTime.now().toIso8601String().split('T')[0];
                     final filename = 'EasySplit_${cleanName}_$dateStr.pdf';
-                    downloadFile(bytes, filename);
+                    await downloadFile(bytes, filename);
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('PDF exported: $filename')),
