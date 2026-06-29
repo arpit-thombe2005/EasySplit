@@ -254,14 +254,14 @@ class _SplashScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: cs.primary,
-                borderRadius: BorderRadius.circular(20),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Image.asset(
+                'assets/images/logo.png',
+                width: 84,
+                height: 84,
+                fit: BoxFit.cover,
               ),
-              child: Icon(Icons.call_split_rounded, color: cs.onPrimary, size: 36),
             ),
             const SizedBox(height: 20),
             Text(
