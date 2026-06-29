@@ -26,6 +26,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
   DateTime _selectedDate = DateTime.now();
   final Set<String> _selectedParticipants = {};
+  String? _selectedPaidBy;
 
   @override
   void dispose() {
@@ -47,9 +48,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     final user = ref.read(currentUserProvider);
     if (user == null) return;
 
+    final paidById = _selectedPaidBy ?? user.id;
+
     final expense = await ref.read(addExpenseNotifierProvider.notifier).submitExpense(
           groupId: widget.groupId,
-          paidBy: user.id,
+          paidBy: paidById,
           title: _titleController.text.trim(),
           amount: double.tryParse(_amountController.text) ?? 0,
           participantIds: _selectedParticipants.toList(),
@@ -185,6 +188,64 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 hintText: 'Any additional details...',
               ),
               maxLines: 3,
+            ),
+            const SizedBox(height: 20),
+
+            // Paid By Dropdown
+            Text('Paid by', style: theme.textTheme.titleSmall),
+            const SizedBox(height: 8),
+
+            groupAsync.when(
+              data: (group) {
+                if (_selectedPaidBy == null && group.members.isNotEmpty) {
+                  final currentInGroup = group.members.any((m) => m.userId == user?.id);
+                  _selectedPaidBy = currentInGroup ? user?.id : group.members.first.userId;
+                }
+
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: cs.outline.withValues(alpha: 0.15)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedPaidBy,
+                      isExpanded: true,
+                      icon: const Icon(Icons.arrow_drop_down_rounded),
+                      items: group.members.map((m) {
+                        final name = m.user?.name ?? m.userId;
+                        final isMe = m.userId == user?.id;
+                        return DropdownMenuItem<String>(
+                          value: m.userId,
+                          child: Row(
+                            children: [
+                              AppAvatar(
+                                name: name,
+                                avatarId: m.user?.avatarId,
+                                radius: 14,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                isMe ? '$name (You)' : name,
+                                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _selectedPaidBy = val);
+                        }
+                      },
+                    ),
+                  ),
+                );
+              },
+              loading: () => const SizedBox(height: 48, child: Center(child: CircularProgressIndicator())),
+              error: (_, __) => const SizedBox.shrink(),
             ),
             const SizedBox(height: 20),
 
