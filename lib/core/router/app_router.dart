@@ -12,6 +12,7 @@ import 'package:easy_split/features/expenses/presentation/screens/add_expense_sc
 import 'package:easy_split/features/activity/presentation/screens/activity_screen.dart';
 import 'package:easy_split/features/profile/presentation/screens/profile_screen.dart';
 import 'package:easy_split/features/groups/presentation/screens/group_invitations_screen.dart';
+import 'package:easy_split/features/settlements/presentation/screens/settlement_history_screen.dart';
 import 'package:easy_split/features/groups/presentation/providers/invitations_provider.dart';
 
 
@@ -160,6 +161,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.groupInvitations,
         builder: (ctx, state) => const GroupInvitationsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.settlementHistory,
+        builder: (ctx, state) => const SettlementHistoryScreen(),
       ),
     ],
   );

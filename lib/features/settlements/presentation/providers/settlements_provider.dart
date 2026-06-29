@@ -1,11 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_split/features/auth/presentation/providers/auth_provider.dart';
+import 'package:easy_split/features/expenses/domain/services/debt_simplifier.dart';
+import 'package:easy_split/features/expenses/presentation/providers/expenses_provider.dart';
 import 'package:easy_split/features/groups/presentation/providers/groups_provider.dart';
 import 'package:easy_split/features/settlements/data/repositories/settlements_repository_impl.dart';
 import 'package:easy_split/features/settlements/domain/models/settlement.dart';
 import 'package:easy_split/features/settlements/domain/repositories/settlements_repository.dart';
-import 'package:easy_split/core/constants/app_constants.dart';
-import 'package:easy_split/core/utils/debt_simplification.dart';
 
 // ── Repository Provider ───────────────────────────────────────────
 
@@ -13,16 +13,31 @@ final settlementsRepositoryProvider = Provider<SettlementsRepository>((ref) {
   return SettlementsRepositoryImpl(api: ref.watch(apiServiceProvider));
 });
 
-// ── Simplified Debts ──────────────────────────────────────────────
+// ── Group Settlements ─────────────────────────────────────────────
 
-final simplifiedDebtsProvider =
-    FutureProvider.family<List<DebtTransaction>, String>((ref, groupId) async {
-  return ref
-      .read(settlementsRepositoryProvider)
-      .getSimplifiedDebts(groupId);
+final groupSettlementsProvider =
+    FutureProvider.family<List<Settlement>, String>((ref, groupId) async {
+  return ref.read(settlementsRepositoryProvider).getGroupSettlements(groupId);
 });
 
-// ── Settlements ───────────────────────────────────────────────────
+// ── Simplified Debts (Minimum Cash Flow Engine) ────────────────────
+
+final simplifiedDebtsProvider =
+    Provider.family<List<SimplifiedDebt>, String>((ref, groupId) {
+  final group = ref.watch(groupDetailProvider(groupId)).valueOrNull;
+  final expenses = ref.watch(groupExpensesProvider(groupId)).valueOrNull ?? [];
+  final settlements = ref.watch(groupSettlementsProvider(groupId)).valueOrNull ?? [];
+
+  if (group == null) return [];
+
+  return DebtSimplifierService.calculate(
+    members: group.members,
+    expenses: expenses,
+    settlements: settlements,
+  );
+});
+
+// ── Settlements Notifier (My Settlements & Actions) ───────────────
 
 class SettlementsNotifier extends AsyncNotifier<List<Settlement>> {
   @override
@@ -31,41 +46,64 @@ class SettlementsNotifier extends AsyncNotifier<List<Settlement>> {
   }
 
   Future<void> refresh() async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(
-      () => ref.read(settlementsRepositoryProvider).getMySettlements(),
-    );
+    ref.invalidateSelf();
+    await future;
   }
 
-  Future<bool> markSettled(String settlementId) async {
+  Future<Settlement?> recordPayment({
+    required String toUserId,
+    String? groupId,
+    required double amount,
+    String paymentMethod = 'UPI',
+    String? note,
+  }) async {
     try {
-      final updated =
-          await ref.read(settlementsRepositoryProvider).markSettled(settlementId);
-      final current = state.valueOrNull ?? [];
-      state = AsyncData(
-        current.map((s) => s.id == settlementId ? updated : s).toList(),
-      );
+      final settlement = await ref.read(settlementsRepositoryProvider).recordPayment(
+            toUserId: toUserId,
+            groupId: groupId,
+            amount: amount,
+            paymentMethod: paymentMethod,
+            note: note,
+          );
+      ref.invalidateSelf();
+      if (groupId != null && groupId.isNotEmpty) {
+        ref.invalidate(groupDetailProvider(groupId));
+        ref.invalidate(groupSettlementsProvider(groupId));
+        ref.invalidate(groupsNotifierProvider);
+      }
+      return settlement;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<bool> confirmPayment(String settlementId, {String? groupId}) async {
+    try {
+      await ref.read(settlementsRepositoryProvider).confirmPayment(settlementId);
+      ref.invalidateSelf();
+      if (groupId != null && groupId.isNotEmpty) {
+        ref.invalidate(groupDetailProvider(groupId));
+        ref.invalidate(groupSettlementsProvider(groupId));
+        ref.invalidate(groupsNotifierProvider);
+      }
       return true;
     } catch (_) {
       return false;
     }
   }
 
-  Future<Settlement?> createSettlement({
-    required String toUserId,
-    required String groupId,
-    required double amount,
-  }) async {
+  Future<bool> rejectPayment(String settlementId, {String? groupId}) async {
     try {
-      final settlement = await ref
-          .read(settlementsRepositoryProvider)
-          .createSettlement(toUserId: toUserId, groupId: groupId, amount: amount);
-      final current = state.valueOrNull ?? [];
-      state = AsyncData([settlement, ...current]);
-      ref.invalidate(simplifiedDebtsProvider(groupId));
-      return settlement;
+      await ref.read(settlementsRepositoryProvider).rejectPayment(settlementId);
+      ref.invalidateSelf();
+      if (groupId != null && groupId.isNotEmpty) {
+        ref.invalidate(groupDetailProvider(groupId));
+        ref.invalidate(groupSettlementsProvider(groupId));
+        ref.invalidate(groupsNotifierProvider);
+      }
+      return true;
     } catch (_) {
-      return null;
+      return false;
     }
   }
 }
@@ -89,10 +127,6 @@ class DashboardSummary {
 
 final dashboardSummaryProvider = Provider<DashboardSummary>((ref) {
   final groups = ref.watch(groupsNotifierProvider).valueOrNull ?? [];
-  final settlements = ref.watch(settlementsNotifierProvider).valueOrNull ?? [];
-  final pending = settlements.where((s) => s.status == SettlementStatus.pending);
-  final currentUserId = ref.watch(currentUserProvider)?.id ?? '';
-
   double totalOwed = 0;
   double totalOwedTo = 0;
 
@@ -101,14 +135,6 @@ final dashboardSummaryProvider = Provider<DashboardSummary>((ref) {
       totalOwedTo += g.myBalance;
     } else if (g.myBalance < 0) {
       totalOwed += g.myBalance.abs();
-    }
-  }
-
-  for (final s in pending) {
-    if (s.fromUser == currentUserId) {
-      totalOwed += s.amount;
-    } else if (s.toUser == currentUserId) {
-      totalOwedTo += s.amount;
     }
   }
 

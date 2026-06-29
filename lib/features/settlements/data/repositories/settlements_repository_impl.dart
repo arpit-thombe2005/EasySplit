@@ -1,5 +1,4 @@
 import 'package:easy_split/core/services/api_service.dart';
-import 'package:easy_split/core/utils/debt_simplification.dart';
 import 'package:easy_split/features/settlements/domain/models/settlement.dart';
 import 'package:easy_split/features/settlements/domain/repositories/settlements_repository.dart';
 
@@ -28,37 +27,32 @@ class SettlementsRepositoryImpl implements SettlementsRepository {
   }
 
   @override
-  Future<Settlement> markSettled(String settlementId) async {
-    final data = await _api.patch('/settlements/$settlementId/settle');
-    return Settlement.fromJson(data['settlement'] as Map<String, dynamic>);
-  }
-
-  @override
-  Future<List<DebtTransaction>> getSimplifiedDebts(String groupId) async {
-    final data = await _api.get('/groups/$groupId/debts/simplified');
-    final list = data['debts'] as List<dynamic>;
-    return list
-        .map((d) => DebtTransaction(
-              fromUserId: d['from_user_id'] as String,
-              toUserId: d['to_user_id'] as String,
-              amount: (d['amount'] as num).toDouble(),
-              fromUserName: d['from_user_name'] as String? ?? '',
-              toUserName: d['to_user_name'] as String? ?? '',
-            ))
-        .toList();
-  }
-
-  @override
-  Future<Settlement> createSettlement({
+  Future<Settlement> recordPayment({
     required String toUserId,
-    required String groupId,
+    String? groupId,
     required double amount,
+    String paymentMethod = 'UPI',
+    String? note,
   }) async {
     final data = await _api.post('/settlements', data: {
       'to_user': toUserId,
       'group_id': groupId,
       'amount': amount,
+      'payment_method': paymentMethod,
+      'note': note,
     });
+    return Settlement.fromJson(data['settlement'] as Map<String, dynamic>);
+  }
+
+  @override
+  Future<Settlement> confirmPayment(String settlementId) async {
+    final data = await _api.patch('/settlements/$settlementId/confirm');
+    return Settlement.fromJson(data['settlement'] as Map<String, dynamic>);
+  }
+
+  @override
+  Future<Settlement> rejectPayment(String settlementId) async {
+    final data = await _api.patch('/settlements/$settlementId/reject');
     return Settlement.fromJson(data['settlement'] as Map<String, dynamic>);
   }
 }

@@ -118,6 +118,7 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String notifications = '/notifications';
   static const String groupInvitations = '/invitations';
+  static const String settlementHistory = '/settlements/history';
 }
 
 /// Enum: Split type for expenses

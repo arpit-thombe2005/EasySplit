@@ -339,8 +339,8 @@ class _QuickActions extends StatelessWidget {
         const SizedBox(width: 12),
         _QuickActionItem(
           icon: Icons.sync_alt_rounded,
-          label: 'Settle Up',
-          onTap: () => context.go(AppRoutes.activity),
+          label: 'Settlements',
+          onTap: () => context.push(AppRoutes.settlementHistory),
         ),
       ],
     );

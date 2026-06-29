@@ -11,6 +11,9 @@ import 'package:easy_split/shared/widgets/group_card.dart';
 import 'package:easy_split/shared/widgets/expense_card.dart';
 import 'package:easy_split/shared/widgets/empty_state.dart';
 import 'package:easy_split/shared/widgets/loading_overlay.dart';
+import 'package:easy_split/features/settlements/presentation/providers/settlements_provider.dart';
+import 'package:easy_split/features/settlements/presentation/widgets/settle_up_sheet.dart';
+import 'package:easy_split/features/settlements/domain/models/settlement.dart';
 
 /// Groups Screen — shows all groups the user belongs to.
 class GroupsScreen extends ConsumerWidget {
@@ -462,6 +465,14 @@ class GroupDetailScreen extends ConsumerWidget {
             const Divider(),
             const SizedBox(height: 16),
 
+            // Settlement Summary Section
+            _SettlementSummaryCard(
+              groupId: groupId,
+              currency: user?.currency ?? 'INR',
+            ),
+
+            const SizedBox(height: 8),
+
             // Expenses section
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -645,3 +656,184 @@ class _AddMemberSheetState extends ConsumerState<_AddMemberSheet> {
     );
   }
 }
+
+class _SettlementSummaryCard extends ConsumerWidget {
+  final String groupId;
+  final String currency;
+
+  const _SettlementSummaryCard({required this.groupId, required this.currency});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final user = ref.watch(currentUserProvider);
+    final currentUserId = user?.id ?? '';
+    final symbol = currency == 'INR' ? '₹' : currency;
+
+    final debts = ref.watch(simplifiedDebtsProvider(groupId));
+    final settlementsAsync = ref.watch(groupSettlementsProvider(groupId));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Settlement Summary', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            TextButton(
+              onPressed: () => context.push(AppRoutes.settlementHistory),
+              child: const Text('History'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Builder(
+          builder: (_) {
+            final myDebts = debts.where((d) => d.fromUserId == currentUserId || d.toUserId == currentUserId).toList();
+            final pendingSettlements = settlementsAsync.valueOrNull?.where((s) => s.status.toLowerCase() == 'pending' && (s.fromUser == currentUserId || s.toUser == currentUserId)).toList() ?? [];
+
+            if (myDebts.isEmpty && pendingSettlements.isEmpty) {
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: cs.outline.withValues(alpha: 0.15)),
+                ),
+                child: Row(
+                  children: [
+                    const Text('🎉', style: TextStyle(fontSize: 24)),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Everything is settled',
+                      style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return Column(
+              children: [
+                ...myDebts.map((d) {
+                  final isOwedByMe = d.fromUserId == currentUserId;
+                  final otherName = isOwedByMe ? d.toUserName : d.fromUserName;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: cs.outline.withValues(alpha: 0.15)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isOwedByMe ? 'You owe $otherName' : '$otherName owes You',
+                              style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '$symbol ${d.amount.toStringAsFixed(2)}',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: isOwedByMe ? cs.error : Colors.green,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (isOwedByMe)
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                builder: (_) => SettleUpSheet(
+                                  groupId: groupId,
+                                  receiverId: d.toUserId,
+                                  receiverName: d.toUserName,
+                                  outstandingAmount: d.amount,
+                                  currency: currency,
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.payment_rounded, size: 16),
+                            label: const Text('Settle Up'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: cs.primary,
+                              foregroundColor: cs.onPrimary,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          )
+                        else
+                          Text(
+                            'Waiting for payment',
+                            style: theme.textTheme.bodySmall?.copyWith(color: cs.secondary, fontStyle: FontStyle.italic),
+                          ),
+                      ],
+                    ),
+                  );
+                }),
+
+                ...pendingSettlements.map((s) {
+                  final isPayer = s.fromUser == currentUserId;
+                  final otherName = isPayer ? (s.toUserName ?? 'Receiver') : (s.fromUserName ?? 'Payer');
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: cs.outline.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isPayer ? 'Payment to $otherName pending confirmation' : '$otherName marked $symbol${s.amount.toStringAsFixed(2)} paid',
+                                style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              Text('${s.paymentMethod} • $symbol${s.amount.toStringAsFixed(2)}', style: theme.textTheme.bodySmall),
+                            ],
+                          ),
+                        ),
+                        if (!isPayer)
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.close_rounded, color: Colors.red, size: 20),
+                                onPressed: () => ref.read(settlementsNotifierProvider.notifier).rejectPayment(s.id, groupId: groupId),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 20),
+                                onPressed: () => ref.read(settlementsNotifierProvider.notifier).confirmPayment(s.id, groupId: groupId),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+}
+
