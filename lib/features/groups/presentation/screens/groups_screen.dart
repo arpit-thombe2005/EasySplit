@@ -762,26 +762,30 @@ class _SettlementSummaryCard extends ConsumerWidget {
                           ),
                         ),
                         if (isOwedByMe)
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                builder: (_) => SettleUpSheet(
-                                  groupId: groupId,
-                                  receiverId: d.toUserId,
-                                  receiverName: d.toUserName,
-                                  outstandingAmount: d.amount,
-                                  currency: currency,
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.payment_rounded, size: 16),
-                            label: const Text('Settle Up'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: cs.primary,
-                              foregroundColor: cs.onPrimary,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          SizedBox(
+                            height: 36,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  builder: (_) => SettleUpSheet(
+                                    groupId: groupId,
+                                    receiverId: d.toUserId,
+                                    receiverName: d.toUserName,
+                                    outstandingAmount: d.amount,
+                                    currency: currency,
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.payment_rounded, size: 16),
+                              label: const Text('Settle Up'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: cs.primary,
+                                foregroundColor: cs.onPrimary,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
                             ),
                           )
                         else
