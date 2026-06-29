@@ -551,7 +551,25 @@ class GroupDetailScreen extends ConsumerWidget {
       ),
       loading: () => const Scaffold(body: InlineLoader()),
       error: (e, _) => Scaffold(
-        body: Center(child: Text('Error: $e')),
+        appBar: AppBar(
+          title: const Text('EasySplit'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () => context.go(AppRoutes.groups),
+          ),
+        ),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: EmptyState(
+              icon: Icons.group_off_outlined,
+              title: 'Group No Longer Available',
+              subtitle: 'This group has been deleted by the owner. A complete financial backup report has been emailed to your registered address for your records.',
+              actionLabel: 'Back to Groups',
+              onAction: () => context.go(AppRoutes.groups),
+            ),
+          ),
+        ),
       ),
     );
   }
