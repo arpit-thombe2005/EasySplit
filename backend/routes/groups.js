@@ -361,33 +361,26 @@ router.delete('/:groupId', authMiddleware, async (req, res) => {
     const dateStr = new Date().toISOString().split('T')[0];
     const filename = `EasySplit_${cleanName}_${dateStr}.xlsx`;
 
-    // Step 2: Send email to all current members
-    const emailPromises = data.members.map((m) => {
+    // Step 2: Queue email delivery to all current members in background
+    data.members.forEach((m) => {
       const email = m.email || m.user?.email;
-      if (!email) return Promise.resolve();
-      return sendGroupBackupEmail({
-        toEmail: email,
-        groupName: data.group.name,
-        excelBuffer: excelBuffer,
-        filename: filename,
-      }).catch((err) => {
-        console.error(`Failed to send backup email to ${email}:`, err);
-        throw err;
-      });
+      if (email) {
+        sendGroupBackupEmail({
+          toEmail: email,
+          groupName: data.group.name,
+          excelBuffer: excelBuffer,
+          filename: filename,
+        }).catch((err) => {
+          console.error(`Failed to send backup email to ${email}:`, err);
+        });
+      }
     });
 
-    try {
-      await Promise.all(emailPromises);
-    } catch (emailErr) {
-      console.error('Email backup workflow failed prior to group deletion:', emailErr);
-      return res.status(500).json({ error: 'Failed to send report backup emails to all members. Group deletion cancelled.' });
-    }
-
-    // Step 3: Permanently delete group
+    // Step 3: Permanently delete group and notify active rooms
     await sql`DELETE FROM groups WHERE id = ${groupId}`;
 
     emitToGroup(groupId, 'realtime_update', { type: 'group_deleted', groupId });
-    return res.json({ message: 'Group deleted and backup reports emailed successfully' });
+    return res.json({ message: 'Group deleted and backup report emails queued successfully' });
   } catch (err) {
     console.error('Delete group workflow error:', err);
     return res.status(500).json({ error: 'Failed to execute delete group workflow' });
