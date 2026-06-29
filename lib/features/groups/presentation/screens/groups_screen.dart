@@ -6,6 +6,7 @@ import 'package:easy_split/core/constants/app_constants.dart';
 import 'package:easy_split/features/auth/presentation/providers/auth_provider.dart';
 import 'package:easy_split/features/groups/presentation/providers/groups_provider.dart';
 import 'package:easy_split/features/groups/presentation/providers/invitations_provider.dart';
+import 'package:easy_split/features/groups/domain/models/group.dart';
 import 'package:easy_split/features/expenses/presentation/providers/expenses_provider.dart';
 import 'package:easy_split/shared/widgets/group_card.dart';
 import 'package:easy_split/shared/widgets/expense_card.dart';
