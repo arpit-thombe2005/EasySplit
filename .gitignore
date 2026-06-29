@@ -1,0 +1,34 @@
+# EasySplit Flutter App
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+coverage/
+
+# Generated files (regenerate with build_runner)
+*.g.dart
+*.freezed.dart
+
+# Backend
+backend/node_modules/
+backend/.env
+backend/uploads/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Env files
+.env
+.env.local
+
+# Stitch assets (optional — include if you want them in version control)
+# stitch_assets/
