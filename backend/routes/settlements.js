@@ -91,13 +91,6 @@ router.post('/', authMiddleware, async (req, res) => {
     const targetGroupId = group_id || groupId;
     const targetMethod = payment_method || paymentMethod || 'UPI';
 
-    if (targetGroupId) {
-      const groupCheck = await sql`SELECT is_locked FROM groups WHERE id = ${targetGroupId}`;
-      if (groupCheck.length > 0 && groupCheck[0].is_locked) {
-        return res.status(403).json({ error: 'This group is finalized and locked. Recording settlements is disabled.' });
-      }
-    }
-
     if (!targetToUser || !amount || parseFloat(amount) <= 0) {
       return res.status(400).json({ error: 'Valid receiver and amount are required' });
     }
