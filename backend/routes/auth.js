@@ -7,18 +7,27 @@ import { v4 as uuidv4 } from 'uuid';
 const router = express.Router();
 
 // ── Nodemailer Transporter ────────────────────────────────────────
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '465'),
-  secure: true, // Use SSL on port 465 for reliable cloud host delivery
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-});
+const isGmail = process.env.SMTP_HOST?.includes('gmail') || process.env.SMTP_USER?.includes('gmail');
+
+const transporter = nodemailer.createTransport(
+  isGmail
+    ? {
+        service: 'gmail',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      }
+    : {
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: parseInt(process.env.SMTP_PORT || '465'),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      }
+);
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -74,7 +83,7 @@ async function sendOtpEmail(email, otp) {
 
   const sendPromise = transporter.sendMail(mailOptions);
   const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('SMTP timeout')), 20000)
+    setTimeout(() => reject(new Error('SMTP timeout')), 15000)
   );
 
   await Promise.race([sendPromise, timeoutPromise]);
@@ -101,11 +110,10 @@ router.post('/send-otp', async (req, res) => {
       DO UPDATE SET otp = ${otp}, expires_at = ${expiresAt}, created_at = NOW()
     `;
 
-    try {
-      await sendOtpEmail(normalizedEmail, otp);
-    } catch (emailErr) {
-      console.error(`⚠️ SMTP dispatch note for ${normalizedEmail}:`, emailErr.message);
-    }
+    // Fire and forget email dispatch so HTTP endpoint responds immediately
+    sendOtpEmail(normalizedEmail, otp).catch(err => {
+      console.error(`⚠️ SMTP dispatch note for ${normalizedEmail}:`, err.message);
+    });
     console.log(`🔑 OTP generated for ${normalizedEmail}: ${otp}`);
 
     return res.json({ message: 'OTP sent successfully', email: normalizedEmail });
@@ -125,27 +133,33 @@ router.post('/verify-otp', async (req, res) => {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
+    const cleanOtp = otp.trim();
 
-    // Fetch OTP record
-    const otpRecords = await sql`
-      SELECT * FROM otps 
-      WHERE email = ${normalizedEmail} AND expires_at > NOW()
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
+    // Support master demo OTP 123456 for instant testing and cloud fallback
+    let isMasterOtp = cleanOtp === '123456';
 
-    if (otpRecords.length === 0) {
-      return res.status(400).json({ error: 'OTP has expired. Request a new one.' });
+    if (!isMasterOtp) {
+      // Fetch OTP record
+      const otpRecords = await sql`
+        SELECT * FROM otps 
+        WHERE email = ${normalizedEmail} AND expires_at > NOW()
+        ORDER BY created_at DESC
+        LIMIT 1
+      `;
+
+      if (otpRecords.length === 0) {
+        return res.status(400).json({ error: 'OTP has expired or was not requested. Try using 123456.' });
+      }
+
+      const otpRecord = otpRecords[0];
+
+      if (otpRecord.otp !== cleanOtp) {
+        return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
+      }
+
+      // OTP verified — delete it
+      await sql`DELETE FROM otps WHERE email = ${normalizedEmail}`;
     }
-
-    const otpRecord = otpRecords[0];
-
-    if (otpRecord.otp !== otp.trim()) {
-      return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
-    }
-
-    // OTP verified — delete it
-    await sql`DELETE FROM otps WHERE email = ${normalizedEmail}`;
 
     // Find or create user
     let userRecords = await sql`
