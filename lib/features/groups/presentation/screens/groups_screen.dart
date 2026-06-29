@@ -345,9 +345,12 @@ class GroupDetailScreen extends ConsumerWidget {
                   );
                 }),
 
-                // Group Invitations list
+                // Group Invitations list (Owner Only)
                 ref.watch(groupInvitationsProvider(groupId)).when(
                       data: (invitations) {
+                        // Only the group owner is authorized to view pending/declined invitations in the group
+                        if (group.createdBy != user?.id) return const SizedBox.shrink();
+
                         final nonAccepted = invitations.where((i) => i.status != 'accepted').toList();
                         if (nonAccepted.isEmpty) return const SizedBox.shrink();
 
