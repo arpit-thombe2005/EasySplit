@@ -16,8 +16,11 @@ class DebtSimplifierService {
     final Map<String, String> userNameMap = {};
     final Map<String, double> netBalances = {};
 
-    void registerUser(String? id, String? name) {
-      if (id == null || id.isEmpty) return;
+    String clean(String? id) => (id ?? '').toLowerCase().trim();
+
+    void registerUser(String? rawId, String? name) {
+      final id = clean(rawId);
+      if (id.isEmpty) return;
       netBalances.putIfAbsent(id, () => 0.0);
       if (name != null && name.isNotEmpty && name != 'Unknown' && name != 'Member') {
         userNameMap[id] = name;
@@ -31,23 +34,30 @@ class DebtSimplifierService {
 
     // 2. Calculate expense contributions & shares
     for (final e in expenses) {
-      final payerId = e.paidBy;
-      registerUser(payerId, e.paidByUser?.name);
-      netBalances[payerId] = (netBalances[payerId] ?? 0.0) + e.amount;
+      final payerId = clean(e.paidBy);
+      registerUser(e.paidBy, e.paidByUser?.name);
+      if (payerId.isNotEmpty) {
+        netBalances[payerId] = (netBalances[payerId] ?? 0.0) + e.amount;
+      }
 
       for (final p in e.participants) {
+        final partId = clean(p.userId);
         registerUser(p.userId, p.user?.name);
-        netBalances[p.userId] = (netBalances[p.userId] ?? 0.0) - p.shareAmount;
+        if (partId.isNotEmpty) {
+          netBalances[partId] = (netBalances[partId] ?? 0.0) - p.shareAmount;
+        }
       }
     }
 
     // 3. Adjust for COMPLETED settlements only (pending and rejected settlements do NOT alter net balances)
     for (final s in settlements) {
+      final fromId = clean(s.fromUser);
+      final toId = clean(s.toUser);
       registerUser(s.fromUser, s.fromUserName);
       registerUser(s.toUser, s.toUserName);
       if (s.status.toLowerCase() == 'completed') {
-        netBalances[s.fromUser] = (netBalances[s.fromUser] ?? 0.0) + s.amount;
-        netBalances[s.toUser] = (netBalances[s.toUser] ?? 0.0) - s.amount;
+        if (fromId.isNotEmpty) netBalances[fromId] = (netBalances[fromId] ?? 0.0) + s.amount;
+        if (toId.isNotEmpty) netBalances[toId] = (netBalances[toId] ?? 0.0) - s.amount;
       }
     }
 
