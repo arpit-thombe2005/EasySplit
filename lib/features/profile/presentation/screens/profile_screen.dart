@@ -25,8 +25,8 @@ class ProfileScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.edit_outlined),
-            onPressed: () => context.push(AppRoutes.settings),
-            tooltip: 'Settings',
+            onPressed: () => _showEditProfileSheet(context, ref, user?.name ?? ''),
+            tooltip: 'Edit Profile',
           ),
         ],
       ),

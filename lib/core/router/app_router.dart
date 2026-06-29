@@ -180,6 +180,10 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // ── Standalone Routes ─────────────────────────────────────
       GoRoute(
+        path: AppRoutes.settings,
+        builder: (ctx, state) => const SettingsScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.notifications,
         builder: (ctx, state) => const _NotificationsScreen(),
       ),
