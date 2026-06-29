@@ -742,22 +742,24 @@ class _SettlementSummaryCard extends ConsumerWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              isOwedByMe ? 'You owe $otherName' : '$otherName owes You',
-                              style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '$symbol ${d.amount.toStringAsFixed(2)}',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: isOwedByMe ? cs.error : Colors.green,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isOwedByMe ? 'You owe $otherName' : '$otherName owes You',
+                                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 2),
+                              Text(
+                                '$symbol ${d.amount.toStringAsFixed(2)}',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: isOwedByMe ? cs.error : Colors.green,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                         if (isOwedByMe)
                           ElevatedButton.icon(
