@@ -189,7 +189,7 @@ export async function generateGroupPdfReport({ group, members, expenses, settlem
 
       const simplified = computeSimplifiedDebts(members, expenses, settlements);
       if (simplified.length === 0) {
-        doc.fillColor(secondaryColor).fontSize(10).font('Helvetica-Oblique').text('🎉 All balances are completely settled!', 48, y);
+        doc.fillColor(secondaryColor).fontSize(10).font('Helvetica-Oblique').text('All balances are completely settled!', 48, y);
         y += 20;
       } else {
         doc.rect(40, y, contentWidth, 22).fill(tableHeaderBg);
