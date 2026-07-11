@@ -15,40 +15,60 @@ import 'package:easy_split/features/groups/presentation/screens/group_invitation
 import 'package:easy_split/features/settlements/presentation/screens/settlement_history_screen.dart';
 import 'package:easy_split/features/groups/presentation/providers/invitations_provider.dart';
 import 'package:easy_split/features/analytics/presentation/screens/group_analytics_screen.dart';
-
-
 import 'package:easy_split/features/auth/domain/models/user.dart';
+import 'package:easy_split/features/version_control/presentation/providers/version_provider.dart';
+import 'package:easy_split/features/version_control/presentation/screens/update_required_screen.dart';
 
-class _AuthRefreshListenable extends ChangeNotifier {
-  _AuthRefreshListenable(Ref ref) {
+class _AppRefreshListenable extends ChangeNotifier {
+  _AppRefreshListenable(Ref ref) {
     ref.listen<AsyncValue<User?>>(authNotifierProvider, (prev, next) {
       if (prev?.valueOrNull?.id != next.valueOrNull?.id || prev?.isLoading != next.isLoading) {
+        notifyListeners();
+      }
+    });
+    ref.listen<AsyncValue<VersionCheckState>>(versionCheckProvider, (prev, next) {
+      if (prev?.valueOrNull?.needsUpdate != next.valueOrNull?.needsUpdate || prev?.isLoading != next.isLoading) {
         notifyListeners();
       }
     });
   }
 }
 
-final _authRefreshProvider = Provider<_AuthRefreshListenable>((ref) {
-  return _AuthRefreshListenable(ref);
+final _appRefreshProvider = Provider<_AppRefreshListenable>((ref) {
+  return _AppRefreshListenable(ref);
 });
 
 /// Provides the GoRouter instance as a Riverpod provider.
 /// Re-evaluates routes when auth state changes without destroying navigation stack.
 final routerProvider = Provider<GoRouter>((ref) {
-  final refreshListenable = ref.watch(_authRefreshProvider);
+  final refreshListenable = ref.watch(_appRefreshProvider);
 
   return GoRouter(
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: false,
     refreshListenable: refreshListenable,
     redirect: (context, state) {
+      final versionState = ref.read(versionCheckProvider);
+      final loc = state.matchedLocation;
+
+      // 1. Enforce version control check first. If update is required, they can ONLY be on /update-required
+      if (versionState.valueOrNull?.needsUpdate == true) {
+        if (loc != AppRoutes.updateRequired) {
+          return AppRoutes.updateRequired;
+        }
+        return null;
+      }
+
+      // If they don't need update but are somehow on the updateRequired page, send them back to splash
+      if (loc == AppRoutes.updateRequired) {
+        return AppRoutes.splash;
+      }
+
       final authState = ref.read(authNotifierProvider);
       // Still loading auth state — no redirect
       if (authState.isLoading) return null;
 
       final isAuthenticated = authState.valueOrNull != null;
-      final loc = state.matchedLocation;
 
       // If not authenticated
       if (!isAuthenticated) {
@@ -83,6 +103,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.splash,
         builder: (ctx, state) => const _SplashScreen(),
+      ),
+
+      // ── Update Required ──────────────────────────────────────
+      GoRoute(
+        path: AppRoutes.updateRequired,
+        builder: (ctx, state) => const UpdateRequiredScreen(),
       ),
 
       // ── Auth ─────────────────────────────────────────────────

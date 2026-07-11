@@ -14,6 +14,7 @@ import expensesRouter from './routes/expenses.js';
 import settlementsRouter from './routes/settlements.js';
 import notificationsRouter from './routes/notifications.js';
 import invitationsRouter from './routes/invitations.js';
+import configRouter from './routes/config.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -115,6 +116,7 @@ app.use('/api/expenses', expensesRouter);
 app.use('/api/settlements', settlementsRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/invitations', invitationsRouter);
+app.use('/api/config', configRouter);
 
 
 // ── 404 Handler ───────────────────────────────────────────────────

@@ -811,6 +811,10 @@ class _SettlementSummaryCard extends ConsumerWidget {
 
     final debts = ref.watch(groupSimplifiedDebtsProvider(groupId));
     final settlementsAsync = ref.watch(groupSettlementsProvider(groupId));
+    final detailAsync = ref.watch(groupDetailProvider(groupId));
+    final expensesAsync = ref.watch(groupExpensesProvider(groupId));
+
+    final isLoading = detailAsync.isLoading || expensesAsync.isLoading || settlementsAsync.isLoading;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -829,6 +833,36 @@ class _SettlementSummaryCard extends ConsumerWidget {
         const SizedBox(height: 8),
         Builder(
           builder: (_) {
+            if (isLoading) {
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: cs.outline.withValues(alpha: 0.15)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Calculating settlements...',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: cs.onSurface.withValues(alpha: 0.6),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
             final myDebts = debts.where((d) {
               final from = d.fromUserId.toLowerCase().trim();
               final to = d.toUserId.toLowerCase().trim();

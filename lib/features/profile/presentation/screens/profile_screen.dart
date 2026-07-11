@@ -81,14 +81,6 @@ class ProfileScreen extends ConsumerWidget {
           // Preferences section
           _SectionHeader(title: 'Preferences'),
 
-          // Avatar Selector
-          _SettingsTile(
-            icon: Icons.face_rounded,
-            title: 'Change Avatar',
-            subtitle: 'Choose from collection',
-            onTap: () => _showAvatarPicker(context, ref, user?.avatarId),
-          ),
-
           // Currency
           _SettingsTile(
             icon: Icons.currency_exchange_rounded,
