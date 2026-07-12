@@ -22,6 +22,10 @@ class VersionCheckState {
         hasError = false;
 }
 
+final packageInfoProvider = FutureProvider<PackageInfo>((ref) async {
+  return PackageInfo.fromPlatform();
+});
+
 final versionCheckProvider = AsyncNotifierProvider<VersionCheckNotifier, VersionCheckState>(
   VersionCheckNotifier.new,
 );

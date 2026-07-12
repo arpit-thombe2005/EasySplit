@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:easy_split/core/constants/app_constants.dart';
 import 'package:easy_split/features/auth/presentation/providers/auth_provider.dart';
+import 'package:easy_split/features/version_control/presentation/providers/version_provider.dart';
 import 'package:easy_split/shared/widgets/avatar_widget.dart';
 
 // Theme mode provider
@@ -17,6 +18,7 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     final themeMode = ref.watch(themeModeProvider);
+    final packageInfoAsync = ref.watch(packageInfoProvider);
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
@@ -130,7 +132,11 @@ class ProfileScreen extends ConsumerWidget {
           _SettingsTile(
             icon: Icons.info_outline_rounded,
             title: 'App Version',
-            subtitle: 'Version ${AppConstants.appVersion}',
+            subtitle: packageInfoAsync.when(
+              data: (info) => 'Version ${info.version}',
+              loading: () => 'Version ...',
+              error: (_, __) => 'Version ${AppConstants.appVersion}',
+            ),
             showChevron: false,
           ),
 
