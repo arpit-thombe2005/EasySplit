@@ -153,7 +153,9 @@ class HomeScreen extends ConsumerWidget {
                     itemBuilder: (ctx, i) => GroupCard(
                       group: preview[i],
                       currency: currency,
-                      onTap: null, // Clicking group name on Home screen does not redirect
+                      onTap: () => context.go(
+                        AppRoutes.groupDetail.replaceAll(':groupId', preview[i].id),
+                      ),
                     ),
                   ),
                 );

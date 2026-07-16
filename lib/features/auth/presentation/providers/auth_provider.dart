@@ -8,6 +8,7 @@ import 'package:easy_split/features/auth/domain/repositories/auth_repository.dar
 import 'package:easy_split/features/groups/presentation/providers/groups_provider.dart';
 import 'package:easy_split/features/groups/presentation/providers/invitations_provider.dart';
 import 'package:easy_split/features/settlements/presentation/providers/settlements_provider.dart';
+import 'package:easy_split/features/expenses/presentation/providers/expenses_provider.dart';
 
 // ── Infrastructure Providers ──────────────────────────────────────
 
@@ -93,6 +94,16 @@ class AuthNotifier extends AsyncNotifier<User?> {
       currency: currency,
     );
     state = AsyncData(user);
+
+    // Invalidate cached providers to fetch fresh profile data (avatar, name, currency, etc.)
+    ref.invalidate(groupsNotifierProvider);
+    ref.invalidate(settlementsNotifierProvider);
+    ref.invalidate(userExpensesProvider);
+
+    final groups = ref.read(groupsNotifierProvider).valueOrNull ?? [];
+    for (final group in groups) {
+      ref.invalidate(groupDetailProvider(group.id));
+    }
   }
 
   Future<void> logout() async {

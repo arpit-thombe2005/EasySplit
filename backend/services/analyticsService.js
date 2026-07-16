@@ -133,11 +133,13 @@ export async function getGroupAnalytics({ groupId, filter, startDate, endDate })
     percentage: totalExpensesAmt > 0 ? Math.round((amount / totalExpensesAmt) * 10000) / 100 : 0,
   })).sort((a, b) => b.amount - a.amount);
 
-  // 2. Member Spending (Pie Chart by Member Paid)
+  // 2. Member Spending (Pie Chart by Member Share)
   const memberSpendingMap = {};
   expenses.forEach((e) => {
-    const pName = e.paid_by_name || userNameMap[e.paid_by] || 'Member';
-    memberSpendingMap[pName] = (memberSpendingMap[pName] || 0) + parseFloat(e.amount || 0);
+    (e.participants || []).forEach((p) => {
+      const uName = userNameMap[p.user_id] || p.user_name || 'Member';
+      memberSpendingMap[uName] = (memberSpendingMap[uName] || 0) + parseFloat(p.share_amount || 0);
+    });
   });
   const memberSpending = Object.entries(memberSpendingMap).map(([userName, amount]) => ({
     userName,
