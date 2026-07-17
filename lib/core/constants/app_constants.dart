@@ -5,7 +5,7 @@ class AppConstants {
 
   // App Info
   static const String appName = 'EasySplit';
-  static const String appVersion = '2.1.0';
+  static const String appVersion = '2.2.0';
 
   // API
   static const String baseUrl = String.fromEnvironment(
