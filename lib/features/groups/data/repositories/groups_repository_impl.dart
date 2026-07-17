@@ -91,14 +91,6 @@ class GroupsRepositoryImpl implements GroupsRepository {
   }
 
   @override
-  Future<Group> toggleGroupArchive({required String groupId, required bool isArchived}) async {
-    final data = await _api.patch('/groups/$groupId/archive', data: {
-      'isArchived': isArchived,
-    });
-    return Group.fromJson(data['group'] as Map<String, dynamic>);
-  }
-
-  @override
   Future<Map<String, dynamic>> getAnalytics({
     required String groupId,
     String? filter,

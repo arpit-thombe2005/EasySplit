@@ -18,10 +18,6 @@ const sql = neon(process.env.DATABASE_URL);
       await sql`ALTER TABLE groups ADD COLUMN IF NOT EXISTS is_locked BOOLEAN NOT NULL DEFAULT FALSE`;
       console.log('✅ Auto-migration for is_locked column verified.');
 
-      // 1b. Migrate is_archived
-      await sql`ALTER TABLE groups ADD COLUMN IF NOT EXISTS is_archived BOOLEAN NOT NULL DEFAULT FALSE`;
-      console.log('✅ Auto-migration for is_archived column verified.');
-
       // 2. Migrate user_devices
       await sql`
         CREATE TABLE IF NOT EXISTS user_devices (

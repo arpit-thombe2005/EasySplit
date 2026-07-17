@@ -19,7 +19,6 @@ abstract class Group with _$Group {
     @Default(0.0) double totalExpenses,
     @Default(0.0) double myBalance, // positive = owed, negative = owe
     @Default(false) bool isLocked,
-    @Default(false) bool isArchived,
   }) = _Group;
 
   factory Group.fromJson(Map<String, dynamic> json) => _$GroupFromJson(json);

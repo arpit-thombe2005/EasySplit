@@ -45,9 +45,6 @@ abstract class GroupsRepository {
   /// Lock or unlock a group (owner only).
   Future<Group> toggleGroupLock({required String groupId, required bool isLocked});
 
-  /// Archive or unarchive a group (owner only).
-  Future<Group> toggleGroupArchive({required String groupId, required bool isArchived});
-
   /// Fetch group analytics dashboard metrics.
   Future<Map<String, dynamic>> getAnalytics({
     required String groupId,

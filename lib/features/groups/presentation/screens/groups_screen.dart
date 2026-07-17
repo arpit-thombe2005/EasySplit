@@ -293,8 +293,6 @@ class GroupDetailScreen extends ConsumerWidget {
                   }
                 } else if (value == 'lock') {
                   await _showLockConfirmationDialog(context, ref, group, !group.isLocked);
-                } else if (value == 'archive') {
-                  await _showArchiveConfirmationDialog(context, ref, group, !group.isArchived);
                 } else if (value == 'leave') {
                   if (group.isLocked) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -354,16 +352,6 @@ class GroupDetailScreen extends ConsumerWidget {
                         Icon(group.isLocked ? Icons.lock_open_rounded : Icons.lock_rounded, size: 20),
                         const SizedBox(width: 8),
                         Text(group.isLocked ? 'Unlock Group' : 'Lock Group'),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'archive',
-                    child: Row(
-                      children: [
-                        Icon(group.isArchived ? Icons.unarchive_rounded : Icons.archive_rounded, size: 20),
-                        const SizedBox(width: 8),
-                        Text(group.isArchived ? 'Unarchive Group' : 'Archive Group'),
                       ],
                     ),
                   ),
@@ -1137,59 +1125,6 @@ Future<void> _showLockConfirmationDialog(
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to update lock: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-}
-
-Future<void> _showArchiveConfirmationDialog(
-  BuildContext context,
-  WidgetRef ref,
-  Group group,
-  bool isArchiving,
-) async {
-  final confirm = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(isArchiving ? 'Archive Group' : 'Unarchive Group'),
-      content: Text(
-        isArchiving
-            ? 'Archiving this group will freeze it and hide it from active groups until unarchived.'
-            : 'Unarchiving will restore this group to your active groups list.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(false),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: isArchiving ? Colors.blueGrey : Colors.green,
-            foregroundColor: Colors.white,
-          ),
-          onPressed: () => Navigator.of(ctx).pop(true),
-          child: Text(isArchiving ? 'Archive Group' : 'Unarchive Group'),
-        ),
-      ],
-    ),
-  );
-
-  if (confirm == true && context.mounted) {
-    try {
-      await ref.read(groupsNotifierProvider.notifier).toggleGroupArchive(group.id, isArchiving);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(isArchiving ? 'Group archived successfully' : 'Group unarchived successfully')),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to update archive state: $e'),
             backgroundColor: Colors.red,
           ),
         );

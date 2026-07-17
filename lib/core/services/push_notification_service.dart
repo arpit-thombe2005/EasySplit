@@ -247,8 +247,6 @@ class PushNotificationService {
       case 'expense_created':
       case 'group_locked':
       case 'group_unlocked':
-      case 'group_archived':
-      case 'group_unarchived':
       case 'reports_ready':
       case 'settlement_pending':
       case 'group_balance':

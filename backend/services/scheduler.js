@@ -47,11 +47,11 @@ export async function runReminders() {
     }
 
     // 2. Outstanding Balances (You Owe / Someone Owes)
-    // We check all non-locked, non-archived groups
+    // We check all non-locked groups
     const groups = await sql`
       SELECT g.id, g.name, g.created_at
       FROM groups g
-      WHERE g.is_locked = FALSE AND g.is_archived = FALSE
+      WHERE g.is_locked = FALSE
     `;
 
     for (const group of groups) {
