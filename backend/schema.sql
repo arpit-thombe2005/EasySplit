@@ -145,6 +145,18 @@ CREATE TABLE IF NOT EXISTS notifications (
 CREATE INDEX IF NOT EXISTS idx_notifications_user   ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications(user_id, is_read) WHERE is_read = FALSE;
 
+-- ── User Device Tokens for Push Notifications ──────────────────────
+CREATE TABLE IF NOT EXISTS user_devices (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  fcm_token   TEXT NOT NULL UNIQUE,
+  device_type VARCHAR(20) CHECK (device_type IN ('android', 'ios', 'web')),
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_devices_user_id ON user_devices(user_id);
+
 -- ── Auto-update updated_at trigger ───────────────────────────────
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
@@ -164,6 +176,10 @@ CREATE OR REPLACE TRIGGER groups_updated_at
 
 CREATE OR REPLACE TRIGGER group_invitations_updated_at
   BEFORE UPDATE ON group_invitations
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+CREATE OR REPLACE TRIGGER user_devices_updated_at
+  BEFORE UPDATE ON user_devices
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ── Cleanup expired OTPs (run periodically or via pg_cron) ────────

@@ -5,6 +5,7 @@ import 'package:easy_split/features/expenses/presentation/providers/expenses_pro
 import 'package:easy_split/features/groups/presentation/providers/groups_provider.dart';
 import 'package:easy_split/features/groups/presentation/providers/invitations_provider.dart';
 import 'package:easy_split/features/settlements/presentation/providers/settlements_provider.dart';
+import 'package:easy_split/core/services/push_notification_service.dart';
 
 final socketServiceProvider = Provider<SocketService>((ref) {
   final service = SocketService();
@@ -18,6 +19,9 @@ final realtimeSyncProvider = Provider<void>((ref) {
 
   if (user != null && user.id.isNotEmpty) {
     socket.connect(user.id);
+
+    // Initialize Push Notifications
+    ref.read(pushNotificationServiceProvider).init();
 
     // Watch active user's groups to join group socket rooms automatically
     final groups = ref.watch(groupsNotifierProvider).valueOrNull ?? [];

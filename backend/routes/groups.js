@@ -9,6 +9,7 @@ import { generateGroupExcelReport } from '../services/excelGenerator.js';
 import { generateGroupPdfReport } from '../services/pdfGenerator.js';
 import { sendGroupBackupEmail } from '../services/emailService.js';
 import { getGroupAnalytics } from '../services/analyticsService.js';
+import { sendPushNotification } from '../services/pushNotificationService.js';
 
 const router = express.Router();
 
@@ -60,6 +61,7 @@ function formatGroup(g, members = [], invitations = []) {
     description: g.description,
     createdBy: g.created_by || g.createdBy,
     isLocked: Boolean(g.is_locked || g.isLocked),
+    isArchived: Boolean(g.is_archived || g.isArchived),
     createdAt: g.created_at || g.createdAt,
     updatedAt: g.updated_at || g.updatedAt,
     totalExpenses: parseFloat(g.total_expenses || g.totalExpenses || 0),
@@ -256,6 +258,44 @@ router.get('/:groupId/export', authMiddleware, async (req, res) => {
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // Send push notification that reports are ready to other members
+    (async () => {
+      try {
+        const members = await sql`
+          SELECT user_id FROM group_members WHERE group_id = ${groupId} AND user_id != ${req.user.userId}
+        `;
+        const exporterUser = await sql`SELECT name FROM users WHERE id = ${req.user.userId}`;
+        const exporterName = exporterUser[0]?.name || 'A group member';
+        
+        for (const m of members) {
+          const notifId = uuidv4();
+          await sql`
+            INSERT INTO notifications (id, user_id, title, message, type, reference_id)
+            VALUES (
+              ${notifId},
+              ${m.user_id},
+              'Group Reports Ready',
+              ${`${exporterName} generated Excel reports for "${data.group.name}".`},
+              'reports_ready',
+              ${groupId}
+            )
+          `;
+          sendPushNotification(m.user_id, {
+            title: `Reports Ready in ${data.group.name}`,
+            body: `${exporterName} generated the group Excel expense reports.`,
+            data: {
+              type: 'reports_ready',
+              groupId: groupId,
+              referenceId: notifId
+            }
+          });
+        }
+      } catch (err) {
+        console.error('Failed to send Excel reports ready push notification:', err);
+      }
+    })();
+
     return res.send(excelBuffer);
   } catch (err) {
     console.error('Export Excel error:', err);
@@ -282,6 +322,44 @@ router.get('/:groupId/export-pdf', authMiddleware, async (req, res) => {
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // Send push notification that reports are ready to other members
+    (async () => {
+      try {
+        const members = await sql`
+          SELECT user_id FROM group_members WHERE group_id = ${groupId} AND user_id != ${req.user.userId}
+        `;
+        const exporterUser = await sql`SELECT name FROM users WHERE id = ${req.user.userId}`;
+        const exporterName = exporterUser[0]?.name || 'A group member';
+        
+        for (const m of members) {
+          const notifId = uuidv4();
+          await sql`
+            INSERT INTO notifications (id, user_id, title, message, type, reference_id)
+            VALUES (
+              ${notifId},
+              ${m.user_id},
+              'Group Reports Ready',
+              ${`${exporterName} generated PDF reports for "${data.group.name}".`},
+              'reports_ready',
+              ${groupId}
+            )
+          `;
+          sendPushNotification(m.user_id, {
+            title: `Reports Ready in ${data.group.name}`,
+            body: `${exporterName} generated the group PDF expense reports.`,
+            data: {
+              type: 'reports_ready',
+              groupId: groupId,
+              referenceId: notifId
+            }
+          });
+        }
+      } catch (err) {
+        console.error('Failed to send PDF reports ready push notification:', err);
+      }
+    })();
+
     return res.send(pdfBuffer);
   } catch (err) {
     console.error('Export PDF error:', err);
@@ -383,6 +461,42 @@ const handleLockToggle = async (req, res) => {
 
     const group = formatGroup(updated[0]);
     emitToGroup(groupId, 'realtime_update', { type: isLocked ? 'group_locked' : 'group_unlocked', groupId });
+
+    if (isLocked) {
+      (async () => {
+        try {
+          const members = await sql`
+            SELECT user_id FROM group_members WHERE group_id = ${groupId} AND user_id != ${req.user.userId}
+          `;
+          for (const m of members) {
+            const notifId = uuidv4();
+            await sql`
+              INSERT INTO notifications (id, user_id, title, message, type, reference_id)
+              VALUES (
+                ${notifId},
+                ${m.user_id},
+                'Group Locked',
+                ${`The group "${group.name}" has been locked and finalized by the owner.`},
+                'group_locked',
+                ${groupId}
+              )
+            `;
+            sendPushNotification(m.user_id, {
+              title: 'Group Locked & Finalized',
+              body: `The group "${group.name}" has been locked and finalized by the owner.`,
+              data: {
+                type: 'group_locked',
+                groupId: groupId,
+                referenceId: notifId
+              }
+            });
+          }
+        } catch (notifErr) {
+          console.error('Failed to send group locked notifications:', notifErr);
+        }
+      })();
+    }
+
     return res.json({ group, message: `Group ${isLocked ? 'locked' : 'unlocked'} successfully` });
   } catch (err) {
     console.error('Lock group error:', err);
@@ -391,6 +505,72 @@ const handleLockToggle = async (req, res) => {
 };
 router.patch('/:groupId/lock', authMiddleware, handleLockToggle);
 router.put('/:groupId/lock', authMiddleware, handleLockToggle);
+
+// ── PATCH/PUT /api/groups/:groupId/archive ───────────────────────
+const handleArchiveToggle = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { isArchived } = req.body;
+
+    const groupCheck = await sql`SELECT created_by, name FROM groups WHERE id = ${groupId}`;
+    if (groupCheck.length === 0) return res.status(404).json({ error: 'Group not found' });
+    if (groupCheck[0].created_by !== req.user.userId) {
+      return res.status(403).json({ error: 'Only the group owner can archive or unarchive this group' });
+    }
+
+    const updated = await sql`
+      UPDATE groups
+      SET is_archived = ${Boolean(isArchived)}, updated_at = NOW()
+      WHERE id = ${groupId}
+      RETURNING *
+    `;
+
+    const group = formatGroup(updated[0]);
+    emitToGroup(groupId, 'realtime_update', { type: isArchived ? 'group_archived' : 'group_unarchived', groupId });
+
+    // Send push notification when group is archived/unarchived
+    (async () => {
+      try {
+        const members = await sql`
+          SELECT user_id FROM group_members WHERE group_id = ${groupId} AND user_id != ${req.user.userId}
+        `;
+        const actionText = isArchived ? 'archived' : 'unarchived';
+        for (const m of members) {
+          const notifId = uuidv4();
+          await sql`
+            INSERT INTO notifications (id, user_id, title, message, type, reference_id)
+            VALUES (
+              ${notifId},
+              ${m.user_id},
+              ${`Group ${isArchived ? 'Archived' : 'Unarchived'}`},
+              ${`The group "${group.name}" has been ${actionText} by the owner.`},
+              ${isArchived ? 'group_archived' : 'group_unarchived'},
+              ${groupId}
+            )
+          `;
+          sendPushNotification(m.user_id, {
+            title: `Group ${isArchived ? 'Archived' : 'Unarchived'}`,
+            body: `The group "${group.name}" has been ${actionText} by the owner.`,
+            data: {
+              type: isArchived ? 'group_archived' : 'group_unarchived',
+              groupId: groupId,
+              referenceId: notifId
+            }
+          });
+        }
+      } catch (notifErr) {
+        console.error('Failed to send group archive notifications:', notifErr);
+      }
+    })();
+
+    return res.json({ group, message: `Group ${isArchived ? 'archived' : 'unarchived'} successfully` });
+  } catch (err) {
+    console.error('Archive group error:', err);
+    return res.status(500).json({ error: 'Failed to update group archive state' });
+  }
+};
+router.patch('/:groupId/archive', authMiddleware, handleArchiveToggle);
+router.put('/:groupId/archive', authMiddleware, handleArchiveToggle);
 
 // ── PUT /api/groups/:groupId ──────────────────────────────────────
 router.put('/:groupId', authMiddleware, async (req, res) => {
@@ -545,6 +725,17 @@ async function handleCreateInvitation(req, res) {
         ${groupId}
       )
     `;
+
+    // Trigger FCM Push notification
+    sendPushNotification(receiver.id, {
+      title: 'Group Invitation',
+      body: `${senderName} invited you to join "${groupName}"`,
+      data: {
+        type: 'group_invitation',
+        referenceId: groupId,
+        invitationId
+      }
+    });
 
     emitToUser(receiver.id, 'realtime_update', { type: 'invitation_received', groupId, invitationId });
     emitToGroup(groupId, 'realtime_update', { type: 'invitation_sent', groupId });

@@ -218,6 +218,7 @@ export async function getGroupAnalytics({ groupId, filter, startDate, endDate })
       id: group.id,
       name: group.name,
       isLocked: Boolean(group.is_locked),
+      isArchived: Boolean(group.is_archived),
     },
     overview: {
       totalExpenses: Math.round(totalExpensesAmt * 100) / 100,

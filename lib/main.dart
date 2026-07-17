@@ -1,13 +1,21 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:easy_split/core/router/app_router.dart';
-import 'package:easy_split/core/theme/app_theme.dart';
 import 'package:easy_split/core/services/socket_provider.dart';
+import 'package:easy_split/core/theme/app_theme.dart';
 import 'package:easy_split/features/profile/presentation/screens/profile_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase App only on mobile platforms
+  if (!kIsWeb) {
+    await Firebase.initializeApp();
+  }
 
   // Force portrait orientation (optional)
   await SystemChrome.setPreferredOrientations([

@@ -101,5 +101,49 @@ router.get('/search', authMiddleware, async (req, res) => {
   }
 });
 
+// ── POST /api/users/devices ───────────────────────────────────────
+router.post('/devices', authMiddleware, async (req, res) => {
+  const { fcmToken, deviceType } = req.body;
+  console.log(`📱 Received device registration request. User: ${req.user.userId}, Device: ${deviceType}, Token: ${fcmToken ? fcmToken.substring(0, 15) : 'null'}...`);
+  
+  if (!fcmToken) {
+    console.warn(`⚠️ Device registration failed: FCM token is missing.`);
+    return res.status(400).json({ error: 'FCM token is required' });
+  }
+
+  try {
+    await sql`
+      INSERT INTO user_devices (user_id, fcm_token, device_type)
+      VALUES (${req.user.userId}, ${fcmToken}, ${deviceType || 'android'})
+      ON CONFLICT (fcm_token) 
+      DO UPDATE SET user_id = ${req.user.userId}, updated_at = NOW()
+    `;
+    console.log(`✅ Device token registered successfully in database for user: ${req.user.userId}`);
+    return res.status(200).json({ message: 'Device token registered successfully' });
+  } catch (err) {
+    console.error('❌ FCM registration error:', err);
+    return res.status(500).json({ error: 'Failed to register device' });
+  }
+});
+
+// ── DELETE /api/users/devices ─────────────────────────────────────
+router.delete('/devices', authMiddleware, async (req, res) => {
+  const fcmToken = req.body.fcmToken || req.query.fcmToken;
+  if (!fcmToken) {
+    return res.status(400).json({ error: 'FCM token is required' });
+  }
+
+  try {
+    await sql`
+      DELETE FROM user_devices 
+      WHERE user_id = ${req.user.userId} AND fcm_token = ${fcmToken}
+    `;
+    return res.json({ message: 'Device token removed successfully' });
+  } catch (err) {
+    console.error('FCM removal error:', err);
+    return res.status(500).json({ error: 'Failed to remove device' });
+  }
+});
+
 export default router;
 export { authMiddleware };

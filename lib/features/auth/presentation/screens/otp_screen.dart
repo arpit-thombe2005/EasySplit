@@ -93,105 +93,107 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
         ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 16),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 16),
 
-              // Icon
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: cs.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(Icons.mark_email_read_outlined, size: 28, color: cs.primary),
-              )
-                  .animate()
-                  .fadeIn(duration: 400.ms)
-                  .scale(begin: const Offset(0.8, 0.8), duration: 400.ms),
+                // Icon
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(Icons.mark_email_read_outlined, size: 28, color: cs.primary),
+                )
+                    .animate()
+                    .fadeIn(duration: 400.ms)
+                    .scale(begin: const Offset(0.8, 0.8), duration: 400.ms),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              Text(
-                'Check your\nemail',
-                style: theme.textTheme.headlineLarge,
-              )
-                  .animate(delay: 100.ms)
-                  .fadeIn(duration: 400.ms),
-
-              const SizedBox(height: 8),
-
-              RichText(
-                text: TextSpan(
-                  style: theme.textTheme.bodyLarge?.copyWith(color: cs.secondary),
-                  children: [
-                    const TextSpan(text: "We sent a 6-digit code to\n"),
-                    TextSpan(
-                      text: state.email,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: cs.onSurface,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-                  .animate(delay: 150.ms)
-                  .fadeIn(duration: 400.ms),
-
-              const SizedBox(height: 40),
-
-              // OTP input
-              OtpTextField(
-                controller: _otpController,
-                onChanged: (v) {
-                  if (v.length == AppConstants.otpLength) _verifyOtp();
-                },
-              )
-                  .animate(delay: 200.ms)
-                  .fadeIn(duration: 400.ms),
-
-              if (state.error != null) ...[
-                const SizedBox(height: 12),
                 Text(
-                  state.error!,
-                  style: theme.textTheme.bodySmall?.copyWith(color: cs.error),
-                ),
-              ],
+                  'Check your\nemail',
+                  style: theme.textTheme.headlineLarge,
+                )
+                    .animate(delay: 100.ms)
+                    .fadeIn(duration: 400.ms),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 8),
 
-              AppButton(
-                label: 'Verify Code',
-                onPressed: _verifyOtp,
-                isLoading: state.isLoading,
-              )
-                  .animate(delay: 250.ms)
-                  .fadeIn(duration: 400.ms),
-
-              const SizedBox(height: 24),
-
-              // Resend
-              Center(
-                child: _canResend
-                    ? TextButton(
-                        onPressed: _resendOtp,
-                        child: const Text('Resend Code'),
-                      )
-                    : Text(
-                        'Resend code in ${_secondsLeft}s',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: cs.secondary,
+                RichText(
+                  text: TextSpan(
+                    style: theme.textTheme.bodyLarge?.copyWith(color: cs.secondary),
+                    children: [
+                      const TextSpan(text: "We sent a 6-digit code to\n"),
+                      TextSpan(
+                        text: state.email,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: cs.onSurface,
                         ),
                       ),
-              )
-                  .animate(delay: 300.ms)
-                  .fadeIn(duration: 400.ms),
-            ],
+                    ],
+                  ),
+                )
+                    .animate(delay: 150.ms)
+                    .fadeIn(duration: 400.ms),
+
+                const SizedBox(height: 40),
+
+                // OTP input
+                OtpTextField(
+                  controller: _otpController,
+                  onChanged: (v) {
+                    if (v.length == AppConstants.otpLength) _verifyOtp();
+                  },
+                )
+                    .animate(delay: 200.ms)
+                    .fadeIn(duration: 400.ms),
+
+                if (state.error != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    state.error!,
+                    style: theme.textTheme.bodySmall?.copyWith(color: cs.error),
+                  ),
+                ],
+
+                const SizedBox(height: 24),
+
+                AppButton(
+                  label: 'Verify Code',
+                  onPressed: _verifyOtp,
+                  isLoading: state.isLoading,
+                )
+                    .animate(delay: 250.ms)
+                    .fadeIn(duration: 400.ms),
+
+                const SizedBox(height: 24),
+
+                // Resend
+                Center(
+                  child: _canResend
+                      ? TextButton(
+                          onPressed: _resendOtp,
+                          child: const Text('Resend Code'),
+                        )
+                      : Text(
+                          'Resend code in ${_secondsLeft}s',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: cs.secondary,
+                          ),
+                        ),
+                )
+                    .animate(delay: 300.ms)
+                    .fadeIn(duration: 400.ms),
+              ],
+            ),
           ),
         ),
       ),

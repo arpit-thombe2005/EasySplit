@@ -1,7 +1,7 @@
 name: easy_split
 description: "EasySplit - Smart expense sharing with friends and groups"
 publish_to: 'none'
-version: 1.1.0+1
+version: 2.1.0+1
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -65,6 +65,11 @@ dependencies:
   # Permissions
   permission_handler: ^11.3.1
 
+  # Firebase & Push Notifications
+  firebase_core: ^3.1.0
+  firebase_messaging: ^15.0.0
+  flutter_local_notifications: ^17.2.1
+
   # App Utils
   url_launcher: ^6.3.1
   share_plus: ^10.1.4
@@ -94,5 +99,5 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/images/logo.png"
+  image_path: "assets/images/logo.jpeg"
   min_sdk_android: 21

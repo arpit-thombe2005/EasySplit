@@ -56,6 +56,13 @@ class GroupsNotifier extends AsyncNotifier<List<Group>> {
     state = AsyncData(current.map((g) => g.id == groupId ? updated : g).toList());
     ref.invalidate(groupDetailProvider(groupId));
   }
+
+  Future<void> toggleGroupArchive(String groupId, bool isArchived) async {
+    final updated = await ref.read(groupsRepositoryProvider).toggleGroupArchive(groupId: groupId, isArchived: isArchived);
+    final current = state.valueOrNull ?? [];
+    state = AsyncData(current.map((g) => g.id == groupId ? updated : g).toList());
+    ref.invalidate(groupDetailProvider(groupId));
+  }
 }
 
 final groupsNotifierProvider =

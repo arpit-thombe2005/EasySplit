@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { sql } from '../db.js';
 import { authMiddleware } from './users.js';
 import { emitToGroup } from '../index.js';
+import { sendPushNotification } from '../services/pushNotificationService.js';
 
 const router = express.Router();
 
@@ -215,6 +216,51 @@ router.post('/', authMiddleware, async (req, res) => {
 
     // Broadcast real-time socket event to all active members of this group!
     emitToGroup(targetGroupId, 'realtime_update', { type: 'expense_created', groupId: targetGroupId, expense: enriched[0] });
+
+    // Asynchronously send push notifications to other group members
+    (async () => {
+      try {
+        const members = await sql`
+          SELECT user_id FROM group_members WHERE group_id = ${targetGroupId} AND user_id != ${targetPaidBy}
+        `;
+        
+        if (members.length > 0) {
+          const payerUser = await sql`SELECT name FROM users WHERE id = ${targetPaidBy}`;
+          const payerName = payerUser[0]?.name || 'A group member';
+          const groupUser = await sql`SELECT name FROM groups WHERE id = ${targetGroupId}`;
+          const groupName = groupUser[0]?.name || 'Group';
+
+          for (const member of members) {
+            const notifId = uuidv4();
+            // 1. Insert in-app notification record
+            await sql`
+              INSERT INTO notifications (id, user_id, title, message, type, reference_id)
+              VALUES (
+                ${notifId},
+                ${member.user_id},
+                'New Expense Added',
+                ${`${payerName} added "${title.trim()}" in "${groupName}": ₹${parseFloat(amount).toFixed(2)}`},
+                'expense_added',
+                ${targetGroupId}
+              )
+            `;
+
+            // 2. Trigger FCM push notification
+            sendPushNotification(member.user_id, {
+              title: `New Expense in ${groupName}`,
+              body: `${payerName} added "${title.trim()}": ₹${parseFloat(amount).toFixed(2)}`,
+              data: {
+                type: 'expense_created',
+                groupId: targetGroupId,
+                referenceId: notifId,
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.error('❌ Failed to send expense push notifications:', err);
+      }
+    })();
 
     return res.status(201).json({ expense: enriched[0] });
   } catch (err) {

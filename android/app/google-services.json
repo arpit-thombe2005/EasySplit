@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "459040179423",
+    "project_id": "easysplit-e8c1d",
+    "storage_bucket": "easysplit-e8c1d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:459040179423:android:2e0ed4c51e2613c53b156a",
+        "android_client_info": {
+          "package_name": "com.easysplit.easy_split"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB1eBWPJSbieaUzeO7Yyqo28OLwLAXQcQs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

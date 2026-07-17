@@ -43,103 +43,105 @@ class _EmailLoginScreenState extends ConsumerState<EmailLoginScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 48),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 48),
 
-                // Logo / App name
-                Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.asset(
-                        'assets/images/logo.png',
-                        width: 44,
-                        height: 44,
-                        fit: BoxFit.cover,
+                  // Logo / App name
+                  Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.asset(
+                          'assets/images/logo.jpeg',
+                          width: 44,
+                          height: 44,
+                          fit: BoxFit.cover,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
+                      const SizedBox(width: 12),
+                      Text(
+                        AppConstants.appName,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  )
+                      .animate()
+                      .fadeIn(duration: 400.ms)
+                      .slideY(begin: -0.1, duration: 400.ms),
+
+                  const SizedBox(height: 56),
+
+                  // Heading
+                  Text(
+                    'Sign in to your\naccount',
+                    style: theme.textTheme.headlineLarge,
+                  )
+                      .animate(delay: 100.ms)
+                      .fadeIn(duration: 400.ms)
+                      .slideY(begin: 0.1, duration: 400.ms),
+
+                  const SizedBox(height: 8),
+                  Text(
+                    "We'll send a verification code to your email.",
+                    style: theme.textTheme.bodyLarge?.copyWith(color: cs.secondary),
+                  )
+                      .animate(delay: 150.ms)
+                      .fadeIn(duration: 400.ms),
+
+                  const SizedBox(height: 40),
+
+                  // Email field
+                  AppTextField(
+                    controller: _emailController,
+                    label: 'Email address',
+                    hint: 'you@example.com',
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _sendOtp(),
+                    prefixIcon: const Icon(Icons.mail_outline_rounded, size: 20),
+                    validator: (val) {
+                      if (val == null || val.isEmpty) return 'Enter your email';
+                      final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+                      if (!emailRegex.hasMatch(val)) return 'Enter a valid email';
+                      return null;
+                    },
+                  )
+                      .animate(delay: 200.ms)
+                      .fadeIn(duration: 400.ms)
+                      .slideY(begin: 0.1, duration: 400.ms),
+
+                  // Error message
+                  if (state.error != null) ...[
+                    const SizedBox(height: 12),
                     Text(
-                      AppConstants.appName,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                      state.error!,
+                      style: theme.textTheme.bodySmall?.copyWith(color: cs.error),
                     ),
                   ],
-                )
-                    .animate()
-                    .fadeIn(duration: 400.ms)
-                    .slideY(begin: -0.1, duration: 400.ms),
 
-                const SizedBox(height: 56),
+                  const SizedBox(height: 24),
 
-                // Heading
-                Text(
-                  'Sign in to your\naccount',
-                  style: theme.textTheme.headlineLarge,
-                )
-                    .animate(delay: 100.ms)
-                    .fadeIn(duration: 400.ms)
-                    .slideY(begin: 0.1, duration: 400.ms),
+                  // Send OTP button
+                  AppButton(
+                    label: 'Continue with Email',
+                    onPressed: _sendOtp,
+                    isLoading: state.isLoading,
+                  )
+                      .animate(delay: 250.ms)
+                      .fadeIn(duration: 400.ms),
 
-                const SizedBox(height: 8),
-                Text(
-                  "We'll send a verification code to your email.",
-                  style: theme.textTheme.bodyLarge?.copyWith(color: cs.secondary),
-                )
-                    .animate(delay: 150.ms)
-                    .fadeIn(duration: 400.ms),
-
-                const SizedBox(height: 40),
-
-                // Email field
-                AppTextField(
-                  controller: _emailController,
-                  label: 'Email address',
-                  hint: 'you@example.com',
-                  keyboardType: TextInputType.emailAddress,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _sendOtp(),
-                  prefixIcon: const Icon(Icons.mail_outline_rounded, size: 20),
-                  validator: (val) {
-                    if (val == null || val.isEmpty) return 'Enter your email';
-                    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-                    if (!emailRegex.hasMatch(val)) return 'Enter a valid email';
-                    return null;
-                  },
-                )
-                    .animate(delay: 200.ms)
-                    .fadeIn(duration: 400.ms)
-                    .slideY(begin: 0.1, duration: 400.ms),
-
-                // Error message
-                if (state.error != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    state.error!,
-                    style: theme.textTheme.bodySmall?.copyWith(color: cs.error),
-                  ),
+                  const SizedBox(height: 24),
                 ],
-
-                const SizedBox(height: 24),
-
-                // Send OTP button
-                AppButton(
-                  label: 'Continue with Email',
-                  onPressed: _sendOtp,
-                  isLoading: state.isLoading,
-                )
-                    .animate(delay: 250.ms)
-                    .fadeIn(duration: 400.ms),
-
-                const SizedBox(height: 24),
-              ],
+              ),
             ),
           ),
         ),

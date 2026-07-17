@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { sql } from '../db.js';
 import { authMiddleware } from './users.js';
 import { emitToGroup, emitToUser } from '../index.js';
+import { sendPushNotification } from '../services/pushNotificationService.js';
 
 const router = express.Router();
 
@@ -104,6 +105,16 @@ router.post('/:invitationId/accept', authMiddleware, async (req, res) => {
         ${inv.group_id}
       )
     `;
+
+    // Trigger FCM Push notification
+    sendPushNotification(inv.sender_id, {
+      title: 'Invitation Accepted',
+      body: `${receiverName} accepted your invitation to join "${inv.group_name}"`,
+      data: {
+        type: 'invitation_accepted',
+        referenceId: inv.group_id
+      }
+    });
 
     emitToGroup(inv.group_id, 'realtime_update', { type: 'invitation_accepted', groupId: inv.group_id, userId: req.user.userId });
     emitToUser(inv.sender_id, 'realtime_update', { type: 'invitation_accepted', groupId: inv.group_id, userId: req.user.userId });

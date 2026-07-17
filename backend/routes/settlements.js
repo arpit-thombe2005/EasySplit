@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { sql } from '../db.js';
 import { authMiddleware } from './users.js';
 import { emitToGroup, emitToUser } from '../index.js';
+import { sendPushNotification } from '../services/pushNotificationService.js';
 
 const router = express.Router();
 
@@ -136,6 +137,17 @@ router.post('/', authMiddleware, async (req, res) => {
       )
     `;
 
+    // Trigger FCM Push notification
+    sendPushNotification(targetToUser, {
+      title: 'Payment Marked as Paid',
+      body: `${payerName} marked ₹${parseFloat(amount).toFixed(2)} as paid via ${targetMethod}.`,
+      data: {
+        type: 'settlement_created',
+        settlementId: formatted.id,
+        referenceId: targetGroupId || ''
+      }
+    });
+
     if (targetGroupId) emitToGroup(targetGroupId, 'realtime_update', { type: 'settlement_created', groupId: targetGroupId, settlement: formatted });
     emitToUser(targetToUser, 'realtime_update', { type: 'settlement_created', settlement: formatted });
 
@@ -185,6 +197,17 @@ router.patch('/:settlementId/confirm', authMiddleware, async (req, res) => {
         ${formatted.groupId || null}
       )
     `;
+
+    // Trigger FCM Push notification
+    sendPushNotification(formatted.fromUser, {
+      title: 'Payment Confirmed',
+      body: `${formatted.toUserName} confirmed receiving your payment of ₹${formatted.amount.toFixed(2)}.`,
+      data: {
+        type: 'settlement_completed',
+        settlementId: formatted.id,
+        referenceId: formatted.groupId || ''
+      }
+    });
 
     if (formatted.groupId) emitToGroup(formatted.groupId, 'realtime_update', { type: 'settlement_updated', groupId: formatted.groupId, settlement: formatted });
     emitToUser(formatted.fromUser, 'realtime_update', { type: 'settlement_updated', settlement: formatted });
@@ -241,6 +264,17 @@ router.patch('/:settlementId/reject', authMiddleware, async (req, res) => {
         ${formatted.groupId || null}
       )
     `;
+
+    // Trigger FCM Push notification
+    sendPushNotification(formatted.fromUser, {
+      title: 'Payment Rejected',
+      body: `${formatted.toUserName} marked your payment of ₹${formatted.amount.toFixed(2)} as rejected.`,
+      data: {
+        type: 'settlement_rejected',
+        settlementId: formatted.id,
+        referenceId: formatted.groupId || ''
+      }
+    });
 
     if (formatted.groupId) emitToGroup(formatted.groupId, 'realtime_update', { type: 'settlement_updated', groupId: formatted.groupId, settlement: formatted });
     emitToUser(formatted.fromUser, 'realtime_update', { type: 'settlement_updated', settlement: formatted });

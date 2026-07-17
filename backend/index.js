@@ -15,8 +15,10 @@ import settlementsRouter from './routes/settlements.js';
 import notificationsRouter from './routes/notifications.js';
 import invitationsRouter from './routes/invitations.js';
 import configRouter from './routes/config.js';
+import { runReminders } from './services/scheduler.js';
 
 const app = express();
+app.set('trust proxy', 1); // Trust proxy headers (Render, Heroku, Serveo, etc.)
 const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
 
@@ -77,7 +79,7 @@ app.use(helmet());
 app.use(cors({
   origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'bypass-tunnel-reminder'],
 }));
 
 // ── Rate Limiting ─────────────────────────────────────────────────
@@ -138,6 +140,13 @@ app.use((err, req, res, next) => {
 server.listen(PORT, () => {
   console.log(`✅ EasySplit API with WebSockets running at http://localhost:${PORT}`);
   console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+
+  // Start daily scheduled check for reminders (every 24 hours)
+  const REMINDER_INTERVAL = 24 * 60 * 60 * 1000;
+  setInterval(() => {
+    runReminders().catch(err => console.error('Error running daily reminders:', err));
+  }, REMINDER_INTERVAL);
+  console.log('⏰ Daily reminder scheduler initialized.');
 });
 
 export default app;

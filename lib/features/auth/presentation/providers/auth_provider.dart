@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:easy_split/core/services/api_service.dart';
@@ -9,6 +10,7 @@ import 'package:easy_split/features/groups/presentation/providers/groups_provide
 import 'package:easy_split/features/groups/presentation/providers/invitations_provider.dart';
 import 'package:easy_split/features/settlements/presentation/providers/settlements_provider.dart';
 import 'package:easy_split/features/expenses/presentation/providers/expenses_provider.dart';
+import 'package:easy_split/core/services/push_notification_service.dart';
 
 // ── Infrastructure Providers ──────────────────────────────────────
 
@@ -107,6 +109,12 @@ class AuthNotifier extends AsyncNotifier<User?> {
   }
 
   Future<void> logout() async {
+    try {
+      await ref.read(pushNotificationServiceProvider).deleteToken();
+    } catch (e) {
+      if (kDebugMode) print('Failed to delete FCM token on logout: $e');
+    }
+
     final repo = ref.read(authRepositoryProvider);
     await repo.logout();
     _clearUserSessionState();
