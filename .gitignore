@@ -32,3 +32,6 @@ Thumbs.db
 
 # Stitch assets (optional — include if you want them in version control)
 # stitch_assets/
+
+# Compiled APKs
+*.apk
