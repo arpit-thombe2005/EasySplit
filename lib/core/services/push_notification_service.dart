@@ -54,21 +54,7 @@ class PushNotificationService {
       // 1. Initialize Firebase Background Handler
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-      // 2. Setup Foreground Notification channel details (Android)
-      const AndroidNotificationChannel channel = AndroidNotificationChannel(
-        'high_importance_channel', // id
-        'High Importance Notifications', // title
-        description: 'This channel is used for important notifications.',
-        importance: Importance.max,
-        playSound: true,
-        enableVibration: true,
-      );
-
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(channel);
-
-      // 3. Initialize Local Notifications Plugin
+      // 2. Initialize Local Notifications Plugin FIRST
       const initializationSettings = InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
         iOS: DarwinInitializationSettings(
@@ -93,6 +79,20 @@ class PushNotificationService {
           }
         },
       );
+
+      // 3. Setup Foreground Notification channel details (Android)
+      const AndroidNotificationChannel channel = AndroidNotificationChannel(
+        'high_importance_channel', // id
+        'High Importance Notifications', // title
+        description: 'This channel is used for important notifications.',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+      );
+
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(channel);
 
       // 4. Request Permissions (iOS & Android 13+)
       print('🔔 FCM: Requesting notification permissions...');
@@ -140,7 +140,6 @@ class PushNotificationService {
         if (kDebugMode) print("Foreground message received: ${message.messageId}");
 
         final RemoteNotification? notification = message.notification;
-        final AndroidNotification? android = message.notification?.android;
 
         if (notification != null && !kIsWeb) {
           _localNotifications.show(
@@ -149,10 +148,10 @@ class PushNotificationService {
             notification.body,
             NotificationDetails(
               android: AndroidNotificationDetails(
-                channel.id,
-                channel.name,
-                channelDescription: channel.description,
-                icon: android?.smallIcon ?? '@mipmap/ic_launcher',
+                'high_importance_channel',
+                'High Importance Notifications',
+                channelDescription: 'This channel is used for important notifications.',
+                icon: '@mipmap/ic_launcher',
                 importance: Importance.max,
                 priority: Priority.high,
                 playSound: true,
@@ -208,11 +207,12 @@ class PushNotificationService {
   Future<void> deleteToken() async {
     try {
       final token = await _fcm.getToken();
-      if (token == null) return;
+      if (token != null) {
+        final api = _ref.read(apiServiceProvider);
+        await api.delete('users/devices?fcmToken=$token');
+      }
 
-      final api = _ref.read(apiServiceProvider);
-      await api.delete('users/devices?fcmToken=$token');
-
+      _initialized = false; // Reset initialization state so next login re-registers token
       if (kDebugMode) {
         print("🗑️ FCM Token deleted from backend: $token");
       }

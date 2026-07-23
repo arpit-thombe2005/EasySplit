@@ -1,8 +1,24 @@
 import express from 'express';
 import { sql } from '../db.js';
 import { authMiddleware } from './users.js';
+import { sendPushNotification } from '../services/pushNotificationService.js';
 
 const router = express.Router();
+
+// ── POST /api/notifications/test-push ──────────────────────────────
+router.post('/test-push', authMiddleware, async (req, res) => {
+  try {
+    await sendPushNotification(req.user.userId, {
+      title: 'Test Push Notification',
+      body: 'If you see this, push notifications are working perfectly!',
+      data: { type: 'test' }
+    });
+    return res.json({ message: 'Test push notification sent successfully' });
+  } catch (err) {
+    console.error('Test push error:', err);
+    return res.status(500).json({ error: 'Failed to send test push notification' });
+  }
+});
 
 // ── GET /api/notifications ────────────────────────────────────────
 router.get('/', authMiddleware, async (req, res) => {

@@ -21,6 +21,10 @@ try {
       }
     }
 
+    if (typeof serviceAccount === 'object' && serviceAccount.private_key) {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
+
     initializeApp({
       credential: typeof serviceAccount === 'object' 
         ? cert(serviceAccount) 
@@ -70,7 +74,25 @@ export async function sendPushNotification(userId, { title, body, data = {} }) {
     const message = {
       notification: { title, body },
       data: stringifiedData,
-      tokens
+      android: {
+        priority: 'high',
+        notification: {
+          channelId: 'high_importance_channel',
+          priority: 'high',
+          sound: 'default',
+          defaultSound: true,
+          defaultVibrateTimings: true,
+        },
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: 'default',
+            contentAvailable: true,
+          },
+        },
+      },
+      tokens,
     };
 
     // 3. Send multicast message
@@ -83,11 +105,13 @@ export async function sendPushNotification(userId, { title, body, data = {} }) {
     response.responses.forEach((resp, idx) => {
       if (!resp.success) {
         const error = resp.error;
-        console.warn(`⚠️ Failed to deliver push to token: ${tokens[idx].substring(0, 15)}... Error: ${error.code}`);
-        if (error.code === 'messaging/invalid-registration-token' ||
-            error.code === 'messaging/registration-token-not-registered') {
+        console.warn(`⚠️ Failed to deliver push to token: ${tokens[idx].substring(0, 15)}... Error code: ${error?.code || error?.message}`);
+        if (error?.code === 'messaging/invalid-registration-token' ||
+            error?.code === 'messaging/registration-token-not-registered') {
           tokensToRemove.push(tokens[idx]);
         }
+      } else {
+        console.log(`✅ Push delivered successfully to device token: ${tokens[idx].substring(0, 15)}...`);
       }
     });
 

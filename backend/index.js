@@ -75,11 +75,13 @@ export function broadcastRealtimeUpdate({ groupId, userIds, event, data }) {
 }
 
 // ── Security Middleware ───────────────────────────────────────────
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
 app.use(cors({
   origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'bypass-tunnel-reminder'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'bypass-tunnel-reminder'],
 }));
 
 // ── Rate Limiting ─────────────────────────────────────────────────
