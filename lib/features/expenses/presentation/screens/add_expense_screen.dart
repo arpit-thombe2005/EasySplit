@@ -4,15 +4,21 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:easy_split/core/constants/app_constants.dart';
 import 'package:easy_split/features/auth/presentation/providers/auth_provider.dart';
+import 'package:easy_split/features/expenses/domain/models/expense.dart';
 import 'package:easy_split/features/expenses/presentation/providers/expenses_provider.dart';
 import 'package:easy_split/features/groups/presentation/providers/groups_provider.dart';
 import 'package:easy_split/shared/widgets/avatar_widget.dart';
 
-/// Add Expense Screen
+/// Add / Edit Expense Screen
 class AddExpenseScreen extends ConsumerStatefulWidget {
   final String groupId;
+  final Expense? initialExpense;
 
-  const AddExpenseScreen({super.key, required this.groupId});
+  const AddExpenseScreen({
+    super.key,
+    required this.groupId,
+    this.initialExpense,
+  });
 
   @override
   ConsumerState<AddExpenseScreen> createState() => _AddExpenseScreenState();
@@ -27,6 +33,30 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   DateTime _selectedDate = DateTime.now();
   final Set<String> _selectedParticipants = {};
   String? _selectedPaidBy;
+  bool _isEditing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isEditing = widget.initialExpense != null;
+    if (_isEditing) {
+      final exp = widget.initialExpense!;
+      _titleController.text = exp.title;
+      _amountController.text = exp.amount == exp.amount.roundToDouble()
+          ? exp.amount.toInt().toString()
+          : exp.amount.toString();
+      _notesController.text = exp.notes ?? '';
+      _selectedDate = exp.expenseDate ?? DateTime.now();
+      _selectedPaidBy = exp.paidBy;
+      _selectedParticipants.addAll(exp.participants.map((p) => p.userId));
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final notifier = ref.read(addExpenseNotifierProvider.notifier);
+        notifier.setCategory(exp.category);
+        notifier.setSplitType(exp.splitType);
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -50,20 +80,31 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
     final paidById = _selectedPaidBy ?? user.id;
 
-    final expense = await ref.read(addExpenseNotifierProvider.notifier).submitExpense(
-          groupId: widget.groupId,
-          paidBy: paidById,
-          title: _titleController.text.trim(),
-          amount: double.tryParse(_amountController.text) ?? 0,
-          participantIds: _selectedParticipants.toList(),
-          expenseDate: _selectedDate,
-          notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
-        );
+    final expense = _isEditing
+        ? await ref.read(addExpenseNotifierProvider.notifier).updateExpense(
+              expenseId: widget.initialExpense!.id,
+              groupId: widget.groupId,
+              paidBy: paidById,
+              title: _titleController.text.trim(),
+              amount: double.tryParse(_amountController.text) ?? 0,
+              participantIds: _selectedParticipants.toList(),
+              expenseDate: _selectedDate,
+              notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+            )
+        : await ref.read(addExpenseNotifierProvider.notifier).submitExpense(
+              groupId: widget.groupId,
+              paidBy: paidById,
+              title: _titleController.text.trim(),
+              amount: double.tryParse(_amountController.text) ?? 0,
+              participantIds: _selectedParticipants.toList(),
+              expenseDate: _selectedDate,
+              notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+            );
 
     if (expense != null && mounted) {
       context.pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('"${expense.title}" expense added!')),
+        SnackBar(content: Text(_isEditing ? '"${expense.title}" expense updated!' : '"${expense.title}" expense added!')),
       );
     }
   }
@@ -85,7 +126,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             context.pop();
           },
         ),
-        title: const Text('Add Expense'),
+        title: Text(_isEditing ? 'Edit Expense' : 'Add Expense'),
         actions: [
           TextButton(
             onPressed: state.isLoading ? null : _submit,

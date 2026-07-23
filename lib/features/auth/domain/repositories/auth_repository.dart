@@ -28,6 +28,9 @@ abstract class AuthRepository {
   /// Log out the current user and clear stored credentials.
   Future<void> logout();
 
+  /// Permanently delete the user account from the backend database.
+  Future<void> deleteAccount();
+
   /// Check if the user is authenticated.
   Future<bool> isAuthenticated();
 

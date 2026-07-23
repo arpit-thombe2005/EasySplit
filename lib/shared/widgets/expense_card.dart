@@ -10,6 +10,8 @@ class ExpenseCard extends StatelessWidget {
   final String currentUserId;
   final String currency;
   final VoidCallback? onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const ExpenseCard({
     super.key,
@@ -17,6 +19,8 @@ class ExpenseCard extends StatelessWidget {
     required this.currentUserId,
     this.currency = 'INR',
     this.onTap,
+    this.onEdit,
+    this.onDelete,
   });
 
   @override
@@ -24,6 +28,7 @@ class ExpenseCard extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isOwed = expense.paidBy == currentUserId;
+    final canManage = expense.paidBy == currentUserId && (onEdit != null || onDelete != null);
 
     // Calculate current user's share
     final myShare = expense.participants
@@ -116,6 +121,43 @@ class ExpenseCard extends StatelessWidget {
                   ),
                 ],
               ),
+
+              if (canManage) ...[
+                const SizedBox(width: 4),
+                PopupMenuButton<String>(
+                  icon: Icon(Icons.more_vert_rounded, size: 20, color: cs.outline),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onSelected: (val) {
+                    if (val == 'edit') onEdit?.call();
+                    if (val == 'delete') onDelete?.call();
+                  },
+                  itemBuilder: (ctx) => [
+                    if (onEdit != null)
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_outlined, size: 18),
+                            SizedBox(width: 8),
+                            Text('Edit Expense'),
+                          ],
+                        ),
+                      ),
+                    if (onDelete != null)
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline_rounded, size: 18, color: cs.error),
+                            const SizedBox(width: 8),
+                            Text('Delete', style: TextStyle(color: cs.error)),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

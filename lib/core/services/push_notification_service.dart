@@ -205,6 +205,7 @@ class PushNotificationService {
 
   /// Delete the FCM token from the backend database (for logout cleanups)
   Future<void> deleteToken() async {
+    if (kIsWeb) return;
     try {
       final token = await _fcm.getToken();
       if (token != null) {

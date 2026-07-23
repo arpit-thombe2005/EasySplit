@@ -390,11 +390,46 @@ class ProfileScreen extends ConsumerWidget {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
+              
+              // Show inline loading indicator
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Account deletion requested')),
+                const SnackBar(
+                  content: Row(
+                    children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      ),
+                      SizedBox(width: 12),
+                      Text('Deleting account...'),
+                    ],
+                  ),
+                  duration: Duration(seconds: 10),
+                ),
               );
+
+              final success = await ref.read(authNotifierProvider.notifier).deleteAccount();
+
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                if (success) {
+                  context.go(AppRoutes.emailLogin);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Your account has been permanently deleted.'),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Failed to delete account. Please try again.'),
+                    ),
+                  );
+                }
+              }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Delete Account'),

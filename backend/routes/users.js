@@ -145,5 +145,48 @@ router.delete('/devices', authMiddleware, async (req, res) => {
   }
 });
 
+// ── DELETE /api/users/me ───────────────────────────────────────────
+router.delete('/me', authMiddleware, async (req, res) => {
+  const userId = req.user.userId;
+  console.log(`🗑️ Processing account deletion request for user: ${userId}`);
+
+  try {
+    // 1. Delete user device tokens
+    await sql`DELETE FROM user_devices WHERE user_id = ${userId}`;
+
+    // 2. Delete user notifications
+    await sql`DELETE FROM notifications WHERE user_id = ${userId}`;
+
+    // 3. Delete user invitations
+    await sql`DELETE FROM group_invitations WHERE sender_id = ${userId} OR receiver_id = ${userId}`;
+
+    // 4. Delete settlements involving this user (as sender or receiver)
+    await sql`DELETE FROM settlements WHERE from_user = ${userId} OR to_user = ${userId}`;
+
+    // 5. Delete expense participant records for this user
+    await sql`DELETE FROM expense_participants WHERE user_id = ${userId}`;
+
+    // 6. Delete expenses paid by this user (and their participants first)
+    const userExpenses = await sql`SELECT id FROM expenses WHERE paid_by = ${userId}`;
+    if (userExpenses.length > 0) {
+      const expIds = userExpenses.map(e => e.id);
+      await sql`DELETE FROM expense_participants WHERE expense_id = ANY(${expIds})`;
+      await sql`DELETE FROM expenses WHERE paid_by = ${userId}`;
+    }
+
+    // 7. Remove user from group memberships
+    await sql`DELETE FROM group_members WHERE user_id = ${userId}`;
+
+    // 8. Delete user account record
+    await sql`DELETE FROM users WHERE id = ${userId}`;
+
+    console.log(`✅ Account deleted successfully for user: ${userId}`);
+    return res.json({ message: 'Account deleted successfully' });
+  } catch (err) {
+    console.error('❌ Account deletion error:', err);
+    return res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
+
 export default router;
 export { authMiddleware };

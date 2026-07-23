@@ -109,16 +109,39 @@ class AuthNotifier extends AsyncNotifier<User?> {
   }
 
   Future<void> logout() async {
-    try {
-      await ref.read(pushNotificationServiceProvider).deleteToken();
-    } catch (e) {
-      if (kDebugMode) print('Failed to delete FCM token on logout: $e');
+    if (!kIsWeb) {
+      try {
+        await ref.read(pushNotificationServiceProvider).deleteToken();
+      } catch (e) {
+        if (kDebugMode) print('Failed to delete FCM token on logout: $e');
+      }
     }
 
     final repo = ref.read(authRepositoryProvider);
     await repo.logout();
     _clearUserSessionState();
     state = const AsyncData(null);
+  }
+
+  Future<bool> deleteAccount() async {
+    try {
+      if (!kIsWeb) {
+        try {
+          await ref.read(pushNotificationServiceProvider).deleteToken();
+        } catch (e) {
+          if (kDebugMode) print('Failed to delete FCM token on account deletion: $e');
+        }
+      }
+
+      final repo = ref.read(authRepositoryProvider);
+      await repo.deleteAccount();
+      _clearUserSessionState();
+      state = const AsyncData(null);
+      return true;
+    } catch (e) {
+      if (kDebugMode) print('Failed to delete account: $e');
+      return false;
+    }
   }
 }
 

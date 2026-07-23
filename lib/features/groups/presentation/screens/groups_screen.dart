@@ -633,6 +633,47 @@ class GroupDetailScreen extends ConsumerWidget {
                           expense: exp,
                           currentUserId: user?.id ?? '',
                           currency: user?.currency ?? 'INR',
+                          onEdit: () {
+                            context.push(
+                              '/groups/$groupId/expenses/add',
+                              extra: exp,
+                            );
+                          },
+                          onDelete: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Delete Expense'),
+                                content: Text('Are you sure you want to delete "${exp.title}"? This action cannot be undone.'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, true),
+                                    child: Text('Delete', style: TextStyle(color: cs.error)),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirm == true) {
+                              final success = await ref
+                                  .read(addExpenseNotifierProvider.notifier)
+                                  .deleteExpense(exp.id, groupId);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      success
+                                          ? '"${exp.title}" expense deleted'
+                                          : 'Failed to delete expense',
+                                    ),
+                                  ),
+                                );
+                              }
+                            }
+                          },
                         ),
                       )).toList(),
                     );

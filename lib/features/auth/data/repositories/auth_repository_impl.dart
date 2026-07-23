@@ -83,6 +83,15 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<void> deleteAccount() async {
+    try {
+      await _api.delete('/users/me');
+    } finally {
+      await _session.clearSession();
+    }
+  }
+
+  @override
   Future<bool> isAuthenticated() => _session.isAuthenticated();
 
   @override

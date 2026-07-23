@@ -16,6 +16,7 @@ import 'package:easy_split/features/settlements/presentation/screens/settlement_
 import 'package:easy_split/features/groups/presentation/providers/invitations_provider.dart';
 import 'package:easy_split/features/analytics/presentation/screens/group_analytics_screen.dart';
 import 'package:easy_split/features/auth/domain/models/user.dart';
+import 'package:easy_split/features/expenses/domain/models/expense.dart';
 import 'package:easy_split/features/version_control/presentation/providers/version_provider.dart';
 import 'package:easy_split/features/version_control/presentation/screens/update_required_screen.dart';
 
@@ -167,6 +168,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                         path: 'expenses/add',
                         builder: (ctx, state) => AddExpenseScreen(
                           groupId: state.pathParameters['groupId']!,
+                          initialExpense: state.extra is Expense ? state.extra as Expense : null,
                         ),
                       ),
                     ],

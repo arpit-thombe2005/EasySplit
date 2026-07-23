@@ -273,13 +273,21 @@ router.post('/', authMiddleware, async (req, res) => {
 router.put('/:expenseId', authMiddleware, async (req, res) => {
   try {
     const { expenseId } = req.params;
-    const existingExp = await sql`SELECT group_id FROM expenses WHERE id = ${expenseId}`;
-    if (existingExp.length > 0) {
-      const groupCheck = await sql`SELECT is_locked FROM groups WHERE id = ${existingExp[0].group_id}`;
-      if (groupCheck.length > 0 && groupCheck[0].is_locked) {
-        return res.status(403).json({ error: 'This group is finalized and locked. Editing expenses is disabled.' });
-      }
+    const existingExp = await sql`SELECT paid_by, group_id FROM expenses WHERE id = ${expenseId}`;
+    if (existingExp.length === 0) {
+      return res.status(404).json({ error: 'Expense not found' });
     }
+
+    // Verify only creator/payer can edit
+    if (existingExp[0].paid_by !== req.user.userId) {
+      return res.status(403).json({ error: 'Only the person who added this expense can edit it.' });
+    }
+
+    const groupCheck = await sql`SELECT is_locked FROM groups WHERE id = ${existingExp[0].group_id}`;
+    if (groupCheck.length > 0 && groupCheck[0].is_locked) {
+      return res.status(403).json({ error: 'This group is finalized and locked. Editing expenses is disabled.' });
+    }
+
     const { title, amount, category, notes, split_type, splitType, expense_date, expenseDate, participants } = req.body;
     const targetSplitType = split_type || splitType;
     const targetExpenseDate = expense_date || expenseDate;
@@ -297,7 +305,11 @@ router.put('/:expenseId', authMiddleware, async (req, res) => {
 
     if (participants) {
       await sql`DELETE FROM expense_participants WHERE expense_id = ${expenseId}`;
-      for (const p of participants) {
+      const parsedParticipants = typeof participants === 'string'
+        ? JSON.parse(participants)
+        : participants;
+
+      for (const p of parsedParticipants) {
         const pUserId = p.user_id || p.userId;
         const pShareAmount = p.share_amount !== undefined ? p.share_amount : p.shareAmount;
         await sql`
@@ -315,6 +327,7 @@ router.put('/:expenseId', authMiddleware, async (req, res) => {
 
     return res.json({ expense: enriched[0] });
   } catch (err) {
+    console.error('Update expense error:', err);
     return res.status(500).json({ error: 'Failed to update expense' });
   }
 });
@@ -322,19 +335,28 @@ router.put('/:expenseId', authMiddleware, async (req, res) => {
 // ── DELETE /api/expenses/:expenseId ──────────────────────────────
 router.delete('/:expenseId', authMiddleware, async (req, res) => {
   try {
-    const existing = await sql`SELECT group_id FROM expenses WHERE id = ${req.params.expenseId}`;
-    if (existing.length > 0) {
-      const groupCheck = await sql`SELECT is_locked FROM groups WHERE id = ${existing[0].group_id}`;
-      if (groupCheck.length > 0 && groupCheck[0].is_locked) {
-        return res.status(403).json({ error: 'This group is finalized and locked. Deleting expenses is disabled.' });
-      }
+    const existing = await sql`SELECT paid_by, group_id FROM expenses WHERE id = ${req.params.expenseId}`;
+    if (existing.length === 0) {
+      return res.status(404).json({ error: 'Expense not found' });
     }
+
+    // Verify only creator/payer can delete
+    if (existing[0].paid_by !== req.user.userId) {
+      return res.status(403).json({ error: 'Only the person who added this expense can delete it.' });
+    }
+
+    const groupCheck = await sql`SELECT is_locked FROM groups WHERE id = ${existing[0].group_id}`;
+    if (groupCheck.length > 0 && groupCheck[0].is_locked) {
+      return res.status(403).json({ error: 'This group is finalized and locked. Deleting expenses is disabled.' });
+    }
+
     await sql`DELETE FROM expenses WHERE id = ${req.params.expenseId} AND paid_by = ${req.user.userId}`;
     if (existing[0]?.group_id) {
       emitToGroup(existing[0].group_id, 'realtime_update', { type: 'expense_deleted', groupId: existing[0].group_id, expenseId: req.params.expenseId });
     }
-    return res.json({ message: 'Expense deleted' });
+    return res.json({ message: 'Expense deleted successfully' });
   } catch (err) {
+    console.error('Delete expense error:', err);
     return res.status(500).json({ error: 'Failed to delete expense' });
   }
 });

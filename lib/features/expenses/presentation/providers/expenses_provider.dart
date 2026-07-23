@@ -128,6 +128,7 @@ class AddExpenseNotifier extends Notifier<AddExpenseState> {
 
       // Invalidate group expenses cache
       ref.invalidate(groupExpensesProvider(groupId));
+      ref.invalidate(userExpensesProvider);
 
       state = const AddExpenseState();
       return expense;
@@ -137,6 +138,70 @@ class AddExpenseNotifier extends Notifier<AddExpenseState> {
         error: e.toString(),
       );
       return null;
+    }
+  }
+
+  Future<Expense?> updateExpense({
+    required String expenseId,
+    required String groupId,
+    required String paidBy,
+    required String title,
+    required double amount,
+    required List<String> participantIds,
+    DateTime? expenseDate,
+    String? notes,
+  }) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+
+    try {
+      final participants = SplitCalculatorService.compute(
+        totalAmount: amount,
+        userIds: participantIds,
+        splitType: state.splitType,
+        exactAmounts: state.exactAmounts,
+        percentages: state.percentages,
+        shares: state.shares,
+      );
+
+      final input = ExpenseInput(
+        groupId: groupId,
+        paidBy: paidBy,
+        title: title,
+        amount: amount,
+        category: state.category,
+        notes: notes,
+        splitType: state.splitType,
+        participants: participants,
+        expenseDate: expenseDate,
+      );
+
+      final expense = await ref.read(expensesRepositoryProvider).updateExpense(
+            expenseId: expenseId,
+            input: input,
+          );
+
+      ref.invalidate(groupExpensesProvider(groupId));
+      ref.invalidate(userExpensesProvider);
+
+      state = const AddExpenseState();
+      return expense;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      );
+      return null;
+    }
+  }
+
+  Future<bool> deleteExpense(String expenseId, String groupId) async {
+    try {
+      await ref.read(expensesRepositoryProvider).deleteExpense(expenseId);
+      ref.invalidate(groupExpensesProvider(groupId));
+      ref.invalidate(userExpensesProvider);
+      return true;
+    } catch (e) {
+      return false;
     }
   }
 
