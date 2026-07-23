@@ -221,7 +221,7 @@ router.post('/', authMiddleware, async (req, res) => {
     (async () => {
       try {
         const members = await sql`
-          SELECT user_id FROM group_members WHERE group_id = ${targetGroupId} AND user_id != ${targetPaidBy}
+          SELECT user_id FROM group_members WHERE group_id = ${targetGroupId} AND user_id != ${req.user.userId}
         `;
         
         if (members.length > 0) {
