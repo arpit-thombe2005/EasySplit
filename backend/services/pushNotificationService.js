@@ -8,16 +8,21 @@ let isFirebaseInitialized = false;
 try {
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     let serviceAccount;
+    let rawStr = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
+    if ((rawStr.startsWith("'") && rawStr.endsWith("'")) || (rawStr.startsWith('"') && rawStr.endsWith('"'))) {
+      rawStr = rawStr.slice(1, -1).trim();
+    }
+
     try {
-      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      serviceAccount = JSON.parse(rawStr);
     } catch (parseErr) {
       // If it is not valid JSON, it might be a base64 encoded string or a file path
       console.warn('⚠️ FIREBASE_SERVICE_ACCOUNT env variable is not valid JSON. Checking Base64 or path...');
       try {
-        serviceAccount = JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, 'base64').toString('utf8'));
+        serviceAccount = JSON.parse(Buffer.from(rawStr, 'base64').toString('utf8'));
       } catch (b64Err) {
         // Assume it might be a file path
-        serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+        serviceAccount = rawStr;
       }
     }
 
