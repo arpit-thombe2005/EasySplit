@@ -45,7 +45,8 @@ class ExpenseCard extends StatelessWidget {
 
     return Card(
       child: InkWell(
-        onTap: onTap,
+        onTap: onTap ?? (canManage ? () => _showManageSheet(context) : null),
+        onLongPress: canManage ? () => _showManageSheet(context) : null,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -99,6 +100,8 @@ class ExpenseCard extends StatelessWidget {
                 ),
               ),
 
+              const SizedBox(width: 12),
+
               // Balance
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -121,43 +124,68 @@ class ExpenseCard extends StatelessWidget {
                   ),
                 ],
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-              if (canManage) ...[
-                const SizedBox(width: 4),
-                PopupMenuButton<String>(
-                  icon: Icon(Icons.more_vert_rounded, size: 20, color: cs.outline),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  onSelected: (val) {
-                    if (val == 'edit') onEdit?.call();
-                    if (val == 'delete') onDelete?.call();
-                  },
-                  itemBuilder: (ctx) => [
-                    if (onEdit != null)
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit_outlined, size: 18),
-                            SizedBox(width: 8),
-                            Text('Edit Expense'),
-                          ],
-                        ),
-                      ),
-                    if (onDelete != null)
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_outline_rounded, size: 18, color: cs.error),
-                            const SizedBox(width: 8),
-                            Text('Delete', style: TextStyle(color: cs.error)),
-                          ],
-                        ),
-                      ),
-                  ],
+  void _showManageSheet(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: cs.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-              ],
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                title: Text(
+                  expense.title,
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Text(
+                  '${expense.paidByUser?.name ?? 'Someone'} paid ${expense.amount.toCurrency(currencyCode: currency)}',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+              const Divider(),
+              if (onEdit != null)
+                ListTile(
+                  leading: const Icon(Icons.edit_outlined),
+                  title: const Text('Edit Expense'),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    onEdit?.call();
+                  },
+                ),
+              if (onDelete != null)
+                ListTile(
+                  leading: Icon(Icons.delete_outline_rounded, color: cs.error),
+                  title: Text('Delete Expense', style: TextStyle(color: cs.error)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    onDelete?.call();
+                  },
+                ),
             ],
           ),
         ),
