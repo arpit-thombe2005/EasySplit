@@ -4,7 +4,7 @@ import 'package:easy_split/core/services/connectivity_service.dart';
 
 /// Helper utility to guard features that require internet connection.
 class OfflineGuard {
-  /// Checks if the device is online. If offline, shows a SnackBar with user feedback and returns false.
+  /// Checks if the device is online. If offline, shows a SnackBar with red background and white text.
   static bool checkOnlineOrNotify(
     BuildContext context,
     WidgetRef ref, {
@@ -22,12 +22,16 @@ class OfflineGuard {
               Expanded(
                 child: Text(
                   message,
-                  style: const TextStyle(fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ],
           ),
-          backgroundColor: Colors.grey[850],
+          backgroundColor: Colors.red[700],
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           duration: const Duration(seconds: 3),
