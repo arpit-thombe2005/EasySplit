@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:easy_split/core/constants/app_constants.dart';
 import 'package:easy_split/features/auth/presentation/providers/auth_provider.dart';
 import 'package:easy_split/shared/widgets/app_button.dart';
+import 'package:easy_split/shared/widgets/app_text_field.dart';
 import 'package:easy_split/core/services/connectivity_service.dart';
 
 /// OTP Verification Screen

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import 'package:easy_split/core/constants/app_constants.dart';
 import 'package:easy_split/core/services/api_service.dart';
 import 'package:easy_split/core/services/connectivity_service.dart';
 import 'package:easy_split/core/services/local_cache_service.dart';
