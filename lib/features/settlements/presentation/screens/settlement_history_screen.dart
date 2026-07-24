@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_split/features/auth/presentation/providers/auth_provider.dart';
 import 'package:easy_split/features/settlements/presentation/providers/settlements_provider.dart';
+import 'package:easy_split/core/utils/offline_guard.dart';
 
 /// Screen displaying complete Settlement History and pending receiver confirmations.
 class SettlementHistoryScreen extends ConsumerWidget {
@@ -139,13 +140,19 @@ class SettlementHistoryScreen extends ConsumerWidget {
                             Row(
                               children: [
                                 TextButton(
-                                  onPressed: () => ref.read(settlementsNotifierProvider.notifier).rejectPayment(s.id, groupId: s.groupId),
+                                  onPressed: () {
+                                    if (!OfflineGuard.checkOnlineOrNotify(context, ref, message: 'Internet connection required to confirm/reject settlements.')) return;
+                                    ref.read(settlementsNotifierProvider.notifier).rejectPayment(s.id, groupId: s.groupId);
+                                  },
                                   style: TextButton.styleFrom(foregroundColor: cs.error),
                                   child: const Text('Reject'),
                                 ),
                                 const SizedBox(width: 8),
                                 ElevatedButton(
-                                  onPressed: () => ref.read(settlementsNotifierProvider.notifier).confirmPayment(s.id, groupId: s.groupId),
+                                  onPressed: () {
+                                    if (!OfflineGuard.checkOnlineOrNotify(context, ref, message: 'Internet connection required to confirm/reject settlements.')) return;
+                                    ref.read(settlementsNotifierProvider.notifier).confirmPayment(s.id, groupId: s.groupId);
+                                  },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: cs.primary,
                                     foregroundColor: cs.onPrimary,

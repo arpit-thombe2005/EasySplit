@@ -19,6 +19,8 @@ import 'package:easy_split/features/auth/domain/models/user.dart';
 import 'package:easy_split/features/expenses/domain/models/expense.dart';
 import 'package:easy_split/features/version_control/presentation/providers/version_provider.dart';
 import 'package:easy_split/features/version_control/presentation/screens/update_required_screen.dart';
+import 'package:easy_split/shared/widgets/offline_banner.dart';
+import 'package:easy_split/core/services/offline_sync_service.dart';
 
 class _AppRefreshListenable extends ChangeNotifier {
   _AppRefreshListenable(Ref ref) {
@@ -228,15 +230,17 @@ final routerProvider = Provider<GoRouter>((ref) {
 });
 
 /// Bottom navigation shell with 4 tabs.
-class _MainShell extends StatelessWidget {
+class _MainShell extends ConsumerWidget {
   final StatefulNavigationShell navigationShell;
 
   const _MainShell({required this.navigationShell});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(offlineSyncServiceProvider);
+
     return Scaffold(
-      body: navigationShell,
+      body: OfflineBanner(child: navigationShell),
       bottomNavigationBar: NavigationBar(
         selectedIndex: navigationShell.currentIndex,
         onDestinationSelected: (index) => navigationShell.goBranch(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_split/features/settlements/presentation/providers/settlements_provider.dart';
+import 'package:easy_split/core/utils/offline_guard.dart';
 
 /// Bottom sheet for recording a settlement payment (Settle Up flow).
 class SettleUpSheet extends ConsumerStatefulWidget {
@@ -49,6 +50,7 @@ class _SettleUpSheetState extends ConsumerState<SettleUpSheet> {
   }
 
   Future<void> _submit() async {
+    if (!OfflineGuard.checkOnlineOrNotify(context, ref, message: 'Internet connection required to settle up.')) return;
     final amountText = _amountController.text.trim();
     final amount = double.tryParse(amountText);
 
@@ -67,26 +69,35 @@ class _SettleUpSheetState extends ConsumerState<SettleUpSheet> {
       _error = null;
     });
 
-    final res = await ref.read(settlementsNotifierProvider.notifier).recordPayment(
-          toUserId: widget.receiverId,
-          groupId: widget.groupId,
-          amount: amount,
-          paymentMethod: _selectedMethod,
-          note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
-        );
+    try {
+      final res = await ref.read(settlementsNotifierProvider.notifier).recordPayment(
+            toUserId: widget.receiverId,
+            groupId: widget.groupId,
+            amount: amount,
+            paymentMethod: _selectedMethod,
+            note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
+          );
 
-    if (mounted) {
-      setState(() => _isSubmitting = false);
-      if (res != null) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Payment of ${widget.currency} ${amount.toStringAsFixed(2)} recorded! Waiting for receiver confirmation.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      } else {
-        setState(() => _error = 'Failed to record payment. Please try again.');
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        if (res != null) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Payment of ${widget.currency} ${amount.toStringAsFixed(2)} recorded! Waiting for receiver confirmation.'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        } else {
+          setState(() => _error = 'Failed to record payment. Please try again.');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+          _error = e.toString();
+        });
       }
     }
   }

@@ -16,6 +16,8 @@ import 'package:easy_split/shared/widgets/avatar_widget.dart';
 import 'package:easy_split/features/settlements/presentation/providers/settlements_provider.dart';
 import 'package:easy_split/features/settlements/presentation/widgets/settle_up_sheet.dart';
 import 'package:easy_split/core/utils/file_download.dart';
+import 'package:easy_split/core/utils/offline_guard.dart';
+import 'package:easy_split/core/services/offline_sync_service.dart';
 
 /// Groups Screen — shows all groups the user belongs to.
 class GroupsScreen extends ConsumerWidget {
@@ -80,7 +82,10 @@ class GroupsScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push(AppRoutes.createGroup),
+        onPressed: () {
+          if (!OfflineGuard.checkOnlineOrNotify(context, ref, message: 'Internet connection required to create groups.')) return;
+          context.push(AppRoutes.createGroup);
+        },
         icon: const Icon(Icons.add_rounded),
         label: const Text('New Group'),
       ),
@@ -109,6 +114,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   }
 
   Future<void> _submit() async {
+    if (!OfflineGuard.checkOnlineOrNotify(context, ref, message: 'Internet connection required to create groups.')) return;
     if (!_formKey.currentState!.validate()) return;
     final group = await ref.read(groupFormProvider.notifier).createGroup(
           name: _nameController.text.trim(),
@@ -242,6 +248,7 @@ class GroupDetailScreen extends ConsumerWidget {
                 if (value == 'analytics') {
                   context.push('/groups/$groupId/analytics');
                 } else if (value == 'export_excel') {
+                  if (!OfflineGuard.checkOnlineOrNotify(context, ref, message: 'Internet connection required to generate reports.')) return;
                   try {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Generating Excel report...')),
@@ -267,6 +274,7 @@ class GroupDetailScreen extends ConsumerWidget {
                     }
                   }
                 } else if (value == 'export_pdf') {
+                  if (!OfflineGuard.checkOnlineOrNotify(context, ref, message: 'Internet connection required to generate reports.')) return;
                   try {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Generating PDF report...')),
@@ -292,8 +300,10 @@ class GroupDetailScreen extends ConsumerWidget {
                     }
                   }
                 } else if (value == 'lock') {
+                  if (!OfflineGuard.checkOnlineOrNotify(context, ref, message: 'Internet connection required to lock or unlock group.')) return;
                   await _showLockConfirmationDialog(context, ref, group, !group.isLocked);
                 } else if (value == 'leave') {
+                  if (!OfflineGuard.checkOnlineOrNotify(context, ref, message: 'Internet connection required for group management.')) return;
                   if (group.isLocked) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Cannot leave a locked group.')),
@@ -310,6 +320,7 @@ class GroupDetailScreen extends ConsumerWidget {
                     if (context.mounted) context.go(AppRoutes.groups);
                   }
                 } else if (value == 'delete') {
+                  if (!OfflineGuard.checkOnlineOrNotify(context, ref, message: 'Internet connection required for group management.')) return;
                   await _showDeleteConfirmationDialog(context, ref, group);
                 }
               },
@@ -710,6 +721,7 @@ class GroupDetailScreen extends ConsumerWidget {
   }
 
   void _showAddMemberSheet(BuildContext context, WidgetRef ref, String groupId) {
+    if (!OfflineGuard.checkOnlineOrNotify(context, ref, message: 'Internet connection required to invite members.')) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

@@ -11,6 +11,8 @@ import 'package:easy_split/features/groups/presentation/providers/invitations_pr
 import 'package:easy_split/features/settlements/presentation/providers/settlements_provider.dart';
 import 'package:easy_split/features/expenses/presentation/providers/expenses_provider.dart';
 import 'package:easy_split/core/services/push_notification_service.dart';
+import 'package:easy_split/core/services/connectivity_service.dart';
+import 'package:easy_split/core/services/local_cache_service.dart';
 
 // ── Infrastructure Providers ──────────────────────────────────────
 
@@ -28,7 +30,14 @@ final apiServiceProvider = Provider<ApiService>((ref) {
 final authSessionProvider = Provider<AuthSessionService>((ref) {
   final api = ref.watch(apiServiceProvider);
   final storage = ref.watch(secureStorageProvider);
-  return AuthSessionService(api: api, storage: storage);
+  final connectivity = ref.watch(connectivityServiceProvider);
+  final cache = ref.watch(localCacheServiceProvider);
+  return AuthSessionService(
+    api: api,
+    storage: storage,
+    connectivity: connectivity,
+    cache: cache,
+  );
 });
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {

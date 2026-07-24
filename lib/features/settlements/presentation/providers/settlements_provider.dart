@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:easy_split/core/services/connectivity_service.dart';
+import 'package:easy_split/core/services/local_cache_service.dart';
 import 'package:easy_split/features/auth/presentation/providers/auth_provider.dart';
 import 'package:easy_split/features/expenses/domain/services/debt_simplifier.dart';
 import 'package:easy_split/features/expenses/presentation/providers/expenses_provider.dart';
@@ -17,7 +19,24 @@ final settlementsRepositoryProvider = Provider<SettlementsRepository>((ref) {
 
 final groupSettlementsProvider =
     FutureProvider.family<List<Settlement>, String>((ref, groupId) async {
-  return ref.read(settlementsRepositoryProvider).getGroupSettlements(groupId);
+  final isOffline = ref.watch(isOfflineProvider);
+  final cache = ref.watch(localCacheServiceProvider);
+
+  if (isOffline) {
+    return cache.getCachedGroupSettlements(groupId);
+  }
+
+  try {
+    final settlements = await ref
+        .read(settlementsRepositoryProvider)
+        .getGroupSettlements(groupId);
+    await cache.saveGroupSettlements(groupId, settlements);
+    return settlements;
+  } catch (e) {
+    final cached = await cache.getCachedGroupSettlements(groupId);
+    if (cached.isNotEmpty) return cached;
+    rethrow;
+  }
 });
 
 // ── Simplified Debts (Minimum Cash Flow Engine) ────────────────────
@@ -42,7 +61,23 @@ final groupSimplifiedDebtsProvider =
 class SettlementsNotifier extends AsyncNotifier<List<Settlement>> {
   @override
   Future<List<Settlement>> build() async {
-    return ref.read(settlementsRepositoryProvider).getMySettlements();
+    final isOffline = ref.watch(isOfflineProvider);
+    final cache = ref.watch(localCacheServiceProvider);
+
+    if (isOffline) {
+      return cache.getCachedMySettlements();
+    }
+
+    try {
+      final settlements =
+          await ref.read(settlementsRepositoryProvider).getMySettlements();
+      await cache.saveMySettlements(settlements);
+      return settlements;
+    } catch (e) {
+      final cached = await cache.getCachedMySettlements();
+      if (cached.isNotEmpty) return cached;
+      rethrow;
+    }
   }
 
   Future<void> refresh() async {
@@ -73,7 +108,7 @@ class SettlementsNotifier extends AsyncNotifier<List<Settlement>> {
       }
       return settlement;
     } catch (_) {
-      return null;
+      rethrow;
     }
   }
 

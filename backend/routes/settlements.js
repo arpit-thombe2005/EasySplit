@@ -96,6 +96,19 @@ router.post('/', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Valid receiver and amount are required' });
     }
 
+    const pendingCheck = await sql`
+      SELECT id FROM settlements
+      WHERE from_user = ${req.user.userId}
+        AND to_user = ${targetToUser}
+        AND group_id IS NOT DISTINCT FROM ${targetGroupId || null}
+        AND status = 'pending'
+      LIMIT 1
+    `;
+
+    if (pendingCheck.length > 0) {
+      return res.status(400).json({ error: 'You already have a pending settlement request awaiting approval.' });
+    }
+
     const settlementId = uuidv4();
     await sql`
       INSERT INTO settlements (id, from_user, to_user, group_id, amount, payment_method, note, status)

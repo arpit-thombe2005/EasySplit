@@ -21,6 +21,10 @@ abstract class Expense with _$Expense {
     UserRef? paidByUser,
     DateTime? expenseDate,
     DateTime? createdAt,
+    @Default(false) bool isPendingSync,
+    @Default(false) bool syncFailed,
+    String? syncError,
+    String? localId,
   }) = _Expense;
 
   factory Expense.fromJson(Map<String, dynamic> json) =>

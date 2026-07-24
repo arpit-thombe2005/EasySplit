@@ -1,6 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:easy_split/core/constants/app_constants.dart';
+import 'package:uuid/uuid.dart';
+import 'package:easy_split/core/services/api_service.dart';
+import 'package:easy_split/core/services/connectivity_service.dart';
+import 'package:easy_split/core/services/local_cache_service.dart';
 import 'package:easy_split/features/auth/presentation/providers/auth_provider.dart';
+import 'package:easy_split/features/auth/domain/models/user.dart';
 import 'package:easy_split/features/expenses/data/repositories/expenses_repository_impl.dart';
 import 'package:easy_split/features/expenses/domain/models/expense.dart';
 import 'package:easy_split/features/expenses/domain/repositories/expenses_repository.dart';
@@ -16,13 +20,70 @@ final expensesRepositoryProvider = Provider<ExpensesRepository>((ref) {
 
 final groupExpensesProvider =
     FutureProvider.family<List<Expense>, String>((ref, groupId) async {
-  return ref
-      .read(expensesRepositoryProvider)
-      .getGroupExpenses(groupId: groupId);
+  final isOffline = ref.watch(isOfflineProvider);
+  final cache = ref.watch(localCacheServiceProvider);
+
+  if (isOffline) {
+    return cache.getCachedGroupExpenses(groupId);
+  }
+
+  try {
+    final expenses = await ref
+        .read(expensesRepositoryProvider)
+        .getGroupExpenses(groupId: groupId);
+
+    // Merge with any unsynced pending offline expenses for this group
+    final pending = await cache.getPendingExpenses();
+    final groupPending = pending.where((e) => e.groupId == groupId).toList();
+
+    final merged = <Expense>[];
+    for (final p in groupPending) {
+      merged.add(p);
+    }
+    for (final e in expenses) {
+      if (!merged.any((m) => m.id == e.id || m.localId == e.id)) {
+        merged.add(e);
+      }
+    }
+
+    await cache.saveGroupExpenses(groupId, merged);
+    return merged;
+  } catch (e) {
+    final cached = await cache.getCachedGroupExpenses(groupId);
+    if (cached.isNotEmpty) return cached;
+    rethrow;
+  }
 });
 
 final userExpensesProvider = FutureProvider<List<Expense>>((ref) async {
-  return ref.read(expensesRepositoryProvider).getMyExpenses();
+  final isOffline = ref.watch(isOfflineProvider);
+  final cache = ref.watch(localCacheServiceProvider);
+
+  if (isOffline) {
+    return cache.getCachedMyExpenses();
+  }
+
+  try {
+    final expenses = await ref.read(expensesRepositoryProvider).getMyExpenses();
+    final pending = await cache.getPendingExpenses();
+
+    final merged = <Expense>[];
+    for (final p in pending) {
+      merged.add(p);
+    }
+    for (final e in expenses) {
+      if (!merged.any((m) => m.id == e.id || m.localId == e.id)) {
+        merged.add(e);
+      }
+    }
+
+    await cache.saveMyExpenses(merged);
+    return merged;
+  } catch (e) {
+    final cached = await cache.getCachedMyExpenses();
+    if (cached.isNotEmpty) return cached;
+    rethrow;
+  }
 });
 
 // ── Add Expense Form ──────────────────────────────────────────────
@@ -110,6 +171,58 @@ class AddExpenseNotifier extends Notifier<AddExpenseState> {
         percentages: state.percentages,
         shares: state.shares,
       );
+
+      final isOffline = ref.read(isOfflineProvider);
+      final cache = ref.read(localCacheServiceProvider);
+
+      if (isOffline) {
+        final localId = 'offline_${const Uuid().v4()}';
+        final currentUser = ref.read(currentUserProvider);
+
+        final pendingExpense = Expense(
+          id: localId,
+          groupId: groupId,
+          paidBy: paidBy,
+          title: title,
+          amount: amount,
+          category: state.category,
+          notes: notes,
+          splitType: state.splitType,
+          participants: participants.map((p) => ExpenseParticipant(
+            id: 'part_${const Uuid().v4()}',
+            expenseId: localId,
+            userId: p.userId,
+            shareAmount: p.shareAmount,
+            percentage: p.percentage,
+            shares: p.shares,
+          )).toList(),
+          paidByUser: currentUser != null
+              ? UserRef(id: currentUser.id, name: currentUser.name ?? 'You', avatarId: currentUser.avatarId)
+              : null,
+          expenseDate: expenseDate ?? DateTime.now(),
+          createdAt: DateTime.now(),
+          isPendingSync: true,
+          syncFailed: false,
+          localId: localId,
+        );
+
+        // 1. Save to pending queue
+        await cache.savePendingExpense(pendingExpense);
+
+        // 2. Insert into cached group expenses
+        final cachedGroup = await cache.getCachedGroupExpenses(groupId);
+        await cache.saveGroupExpenses(groupId, [pendingExpense, ...cachedGroup]);
+
+        // 3. Insert into cached my expenses
+        final cachedMy = await cache.getCachedMyExpenses();
+        await cache.saveMyExpenses([pendingExpense, ...cachedMy]);
+
+        ref.invalidate(groupExpensesProvider(groupId));
+        ref.invalidate(userExpensesProvider);
+
+        state = const AddExpenseState();
+        return pendingExpense;
+      }
 
       final input = ExpenseInput(
         groupId: groupId,

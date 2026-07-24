@@ -7,6 +7,8 @@ import 'package:easy_split/features/auth/presentation/providers/auth_provider.da
 import 'package:easy_split/shared/widgets/app_button.dart';
 import 'package:easy_split/shared/widgets/app_text_field.dart';
 
+import 'package:easy_split/core/services/connectivity_service.dart';
+
 /// Email Login Screen
 /// Matches Stitch design: minimal, black/white, professional
 class EmailLoginScreen extends ConsumerStatefulWidget {
@@ -27,6 +29,23 @@ class _EmailLoginScreenState extends ConsumerState<EmailLoginScreen> {
   }
 
   Future<void> _sendOtp() async {
+    if (ref.read(isOfflineProvider)) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.wifi_off_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 10),
+              Expanded(child: Text('Internet connection required to sign in.')),
+            ],
+          ),
+          backgroundColor: Colors.red[700],
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
     await ref.read(otpFormProvider.notifier).sendOtp(_emailController.text);
     final state = ref.read(otpFormProvider);
@@ -38,6 +57,7 @@ class _EmailLoginScreenState extends ConsumerState<EmailLoginScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(otpFormProvider);
+    final isOffline = ref.watch(isOfflineProvider);
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
@@ -51,7 +71,29 @@ class _EmailLoginScreenState extends ConsumerState<EmailLoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 48),
+                  if (isOffline) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: cs.errorContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.wifi_off_rounded, color: cs.onErrorContainer, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Internet connection required to sign in.',
+                              style: TextStyle(color: cs.onErrorContainer, fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ] else
+                    const SizedBox(height: 48),
 
                   // Logo / App name
                   Row(

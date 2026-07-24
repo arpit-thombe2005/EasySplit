@@ -6,7 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:easy_split/core/constants/app_constants.dart';
 import 'package:easy_split/features/auth/presentation/providers/auth_provider.dart';
 import 'package:easy_split/shared/widgets/app_button.dart';
-import 'package:easy_split/shared/widgets/app_text_field.dart';
+import 'package:easy_split/core/services/connectivity_service.dart';
 
 /// OTP Verification Screen
 class OtpScreen extends ConsumerStatefulWidget {
@@ -47,6 +47,23 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   }
 
   Future<void> _verifyOtp() async {
+    if (ref.read(isOfflineProvider)) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.wifi_off_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 10),
+              Expanded(child: Text('Internet connection required to sign in.')),
+            ],
+          ),
+          backgroundColor: Colors.red[700],
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     final otp = _otpController.text.trim();
     if (otp.length != AppConstants.otpLength) return;
 
@@ -66,6 +83,23 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   }
 
   Future<void> _resendOtp() async {
+    if (ref.read(isOfflineProvider)) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.wifi_off_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 10),
+              Expanded(child: Text('Internet connection required to sign in.')),
+            ],
+          ),
+          backgroundColor: Colors.red[700],
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     if (!_canResend) return;
     final email = ref.read(otpFormProvider).email;
     await ref.read(otpFormProvider.notifier).sendOtp(email);

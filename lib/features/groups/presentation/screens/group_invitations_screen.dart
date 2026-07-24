@@ -6,6 +6,7 @@ import 'package:easy_split/features/groups/domain/models/invitation.dart';
 import 'package:easy_split/features/groups/presentation/providers/invitations_provider.dart';
 import 'package:easy_split/shared/widgets/empty_state.dart';
 import 'package:easy_split/shared/widgets/loading_overlay.dart';
+import 'package:easy_split/core/utils/offline_guard.dart';
 
 /// Group Invitations Screen — shows pending group invitations.
 class GroupInvitationsScreen extends ConsumerWidget {
@@ -82,6 +83,7 @@ class _InvitationCardState extends ConsumerState<_InvitationCard> {
   bool _isProcessing = false;
 
   Future<void> _accept() async {
+    if (!OfflineGuard.checkOnlineOrNotify(context, ref, message: 'Internet connection required to manage invitations.')) return;
     setState(() => _isProcessing = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
@@ -103,6 +105,7 @@ class _InvitationCardState extends ConsumerState<_InvitationCard> {
   }
 
   Future<void> _decline() async {
+    if (!OfflineGuard.checkOnlineOrNotify(context, ref, message: 'Internet connection required to manage invitations.')) return;
     setState(() => _isProcessing = true);
     final messenger = ScaffoldMessenger.of(context);
     try {

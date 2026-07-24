@@ -6,6 +6,7 @@ import 'package:easy_split/core/constants/app_constants.dart';
 import 'package:easy_split/features/auth/presentation/providers/auth_provider.dart';
 import 'package:easy_split/features/version_control/presentation/providers/version_provider.dart';
 import 'package:easy_split/shared/widgets/avatar_widget.dart';
+import 'package:easy_split/core/utils/offline_guard.dart';
 
 // Theme mode provider
 final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
@@ -202,6 +203,7 @@ class ProfileScreen extends ConsumerWidget {
                   final isSelected = preset['id'] == (currentAvatarId ?? 'avatar_1');
                   return GestureDetector(
                     onTap: () async {
+                      if (!OfflineGuard.checkOnlineOrNotify(context, ref, message: 'Internet connection required to update avatar.')) return;
                       await ref.read(authNotifierProvider.notifier).updateProfile(
                             avatarId: preset['id'] as String,
                           );
@@ -253,6 +255,7 @@ class ProfileScreen extends ConsumerWidget {
                     ? Icon(Icons.check_rounded, color: Theme.of(ctx).colorScheme.primary)
                     : null,
                 onTap: () async {
+                  if (!OfflineGuard.checkOnlineOrNotify(context, ref, message: 'Internet connection required to update currency.')) return;
                   await ref.read(authNotifierProvider.notifier).updateProfile(
                         currency: c['code'],
                       );
@@ -337,6 +340,7 @@ class ProfileScreen extends ConsumerWidget {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () async {
+                  if (!OfflineGuard.checkOnlineOrNotify(context, ref, message: 'Internet connection required to update profile name.')) return;
                   await ref.read(authNotifierProvider.notifier).updateProfile(
                         name: nameController.text.trim(),
                       );

@@ -13,6 +13,8 @@ class ExpenseCard extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
+  final VoidCallback? onRetrySync;
+
   const ExpenseCard({
     super.key,
     required this.expense,
@@ -21,6 +23,7 @@ class ExpenseCard extends StatelessWidget {
     this.onTap,
     this.onEdit,
     this.onDelete,
+    this.onRetrySync,
   });
 
   @override
@@ -73,11 +76,46 @@ class ExpenseCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      expense.title,
-                      style: theme.textTheme.titleSmall,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            expense.title,
+                            style: theme.textTheme.titleSmall,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (expense.isPendingSync && !expense.syncFailed) ...[
+                          const SizedBox(width: 6),
+                          Tooltip(
+                            message: 'Pending sync',
+                            child: Icon(
+                              Icons.sync_rounded,
+                              size: 16,
+                              color: cs.primary,
+                            ),
+                          ),
+                        ],
+                        if (expense.syncFailed) ...[
+                          const SizedBox(width: 6),
+                          InkWell(
+                            onTap: onRetrySync,
+                            borderRadius: BorderRadius.circular(12),
+                            child: Padding(
+                              padding: const EdgeInsets.all(2.0),
+                              child: Tooltip(
+                                message: 'Sync failed. Tap to retry.',
+                                child: Icon(
+                                  Icons.warning_amber_rounded,
+                                  size: 18,
+                                  color: cs.error,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(

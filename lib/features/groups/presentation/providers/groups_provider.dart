@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:easy_split/core/services/connectivity_service.dart';
+import 'package:easy_split/core/services/local_cache_service.dart';
 import 'package:easy_split/features/auth/presentation/providers/auth_provider.dart';
 import 'package:easy_split/features/groups/data/repositories/groups_repository_impl.dart';
 import 'package:easy_split/features/groups/domain/models/group.dart';
@@ -16,7 +18,22 @@ final groupsRepositoryProvider = Provider<GroupsRepository>((ref) {
 class GroupsNotifier extends AsyncNotifier<List<Group>> {
   @override
   Future<List<Group>> build() async {
-    return ref.read(groupsRepositoryProvider).getMyGroups();
+    final isOffline = ref.watch(isOfflineProvider);
+    final cache = ref.watch(localCacheServiceProvider);
+
+    if (isOffline) {
+      return cache.getCachedGroups();
+    }
+
+    try {
+      final groups = await ref.read(groupsRepositoryProvider).getMyGroups();
+      await cache.saveGroups(groups);
+      return groups;
+    } catch (e) {
+      final cached = await cache.getCachedGroups();
+      if (cached.isNotEmpty) return cached;
+      rethrow;
+    }
   }
 
   Future<void> refresh() async {
@@ -31,7 +48,12 @@ class GroupsNotifier extends AsyncNotifier<List<Group>> {
             description: description,
           );
       final current = state.valueOrNull ?? [];
-      state = AsyncData([group, ...current]);
+      final updated = [group, ...current];
+      state = AsyncData(updated);
+
+      final cache = ref.read(localCacheServiceProvider);
+      await cache.saveGroups(updated);
+      await cache.saveGroupDetail(group);
       return group;
     } catch (e) {
       rethrow;
@@ -41,19 +63,33 @@ class GroupsNotifier extends AsyncNotifier<List<Group>> {
   Future<void> deleteGroup(String groupId) async {
     await ref.read(groupsRepositoryProvider).deleteGroup(groupId);
     final current = state.valueOrNull ?? [];
-    state = AsyncData(current.where((g) => g.id != groupId).toList());
+    final updated = current.where((g) => g.id != groupId).toList();
+    state = AsyncData(updated);
+
+    final cache = ref.read(localCacheServiceProvider);
+    await cache.saveGroups(updated);
   }
 
   Future<void> leaveGroup(String groupId) async {
     await ref.read(groupsRepositoryProvider).leaveGroup(groupId);
     final current = state.valueOrNull ?? [];
-    state = AsyncData(current.where((g) => g.id != groupId).toList());
+    final updated = current.where((g) => g.id != groupId).toList();
+    state = AsyncData(updated);
+
+    final cache = ref.read(localCacheServiceProvider);
+    await cache.saveGroups(updated);
   }
 
   Future<void> toggleGroupLock(String groupId, bool isLocked) async {
-    final updated = await ref.read(groupsRepositoryProvider).toggleGroupLock(groupId: groupId, isLocked: isLocked);
+    final updatedGroup = await ref.read(groupsRepositoryProvider).toggleGroupLock(groupId: groupId, isLocked: isLocked);
     final current = state.valueOrNull ?? [];
-    state = AsyncData(current.map((g) => g.id == groupId ? updated : g).toList());
+    final updatedList = current.map((g) => g.id == groupId ? updatedGroup : g).toList();
+    state = AsyncData(updatedList);
+
+    final cache = ref.read(localCacheServiceProvider);
+    await cache.saveGroups(updatedList);
+    await cache.saveGroupDetail(updatedGroup);
+
     ref.invalidate(groupDetailProvider(groupId));
   }
 }
@@ -65,7 +101,29 @@ final groupsNotifierProvider =
 
 final groupDetailProvider =
     FutureProvider.family<Group, String>((ref, groupId) async {
-  return ref.read(groupsRepositoryProvider).getGroup(groupId);
+  final isOffline = ref.watch(isOfflineProvider);
+  final cache = ref.watch(localCacheServiceProvider);
+
+  if (isOffline) {
+    final cached = await cache.getCachedGroupDetail(groupId);
+    if (cached != null) return cached;
+    final groups = await cache.getCachedGroups();
+    final found = groups.where((g) => g.id == groupId).firstOrNull;
+    if (found != null) return found;
+  }
+
+  try {
+    final group = await ref.read(groupsRepositoryProvider).getGroup(groupId);
+    await cache.saveGroupDetail(group);
+    return group;
+  } catch (e) {
+    final cached = await cache.getCachedGroupDetail(groupId);
+    if (cached != null) return cached;
+    final groups = await cache.getCachedGroups();
+    final found = groups.where((g) => g.id == groupId).firstOrNull;
+    if (found != null) return found;
+    rethrow;
+  }
 });
 
 final groupAnalyticsProvider =
@@ -168,4 +226,3 @@ class GroupFormNotifier extends Notifier<GroupFormState> {
 
 final groupFormProvider =
     NotifierProvider<GroupFormNotifier, GroupFormState>(GroupFormNotifier.new);
-
