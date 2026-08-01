@@ -109,7 +109,11 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // ── Health Check ──────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.status(200).json({
+    success: true,
+    message: 'Server is healthy',
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // ── API Routes ────────────────────────────────────────────────────
