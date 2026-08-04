@@ -71,7 +71,7 @@ dependencies:
   flutter_local_notifications: ^17.2.1
 
   # App Utils
-  url_launcher: ^6.3.1
+  url_launcher: ^6.3.2
   share_plus: ^10.1.4
   package_info_plus: ^9.0.1
   connectivity_plus: ^6.1.1

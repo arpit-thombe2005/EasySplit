@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:easy_split/core/constants/app_constants.dart';
 import 'package:easy_split/core/router/app_router.dart';
 import 'package:easy_split/features/auth/presentation/providers/auth_provider.dart';
@@ -268,6 +269,17 @@ class PushNotificationService {
           router.push('/groups/$groupId');
         } else {
           router.push(AppRoutes.notifications);
+        }
+        break;
+      case 'app_update':
+        // Launch the URL (can be sent in the push payload, otherwise default to a known URL)
+        final updateUrl = data['url'] as String? ?? 'https://github.com/arpit-thombe2005/EasySplit/releases';
+        try {
+          final Uri url = Uri.parse(updateUrl);
+          // ignore: undefined_function
+          launchUrl(url, mode: LaunchMode.externalApplication);
+        } catch (e) {
+          if (kDebugMode) print("Failed to launch update URL: $e");
         }
         break;
       default:
