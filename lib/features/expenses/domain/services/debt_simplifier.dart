@@ -42,9 +42,6 @@ class DebtSimplifierService {
     for (final e in expenses) {
       final payerId = clean(e.paidBy);
       registerUser(e.paidBy, e.paidByUser?.name);
-      // Credit the payer only for what OTHER participants owe him/her.
-      // This is mathematically equivalent to (e.amount - payer's own share)
-      // but uses actual stored share_amounts to avoid rounding drift.
       double othersShares = 0.0;
       for (final p in e.participants) {
         final partId = clean(p.userId);
@@ -65,7 +62,6 @@ class DebtSimplifierService {
           netBalances[partId] = (netBalances[partId] ?? 0.0) - p.shareAmount;
         }
       }
-
     }
 
     // 3. Adjust for COMPLETED settlements only (pending and rejected settlements do NOT alter net balances)

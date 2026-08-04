@@ -12,7 +12,7 @@ class ExpensesRepositoryImpl implements ExpensesRepository {
   Future<List<Expense>> getGroupExpenses({
     required String groupId,
     int page = 1,
-    int limit = 20,
+    int limit = 10000,
   }) async {
     final data = await _api.get(
       '/groups/$groupId/expenses',

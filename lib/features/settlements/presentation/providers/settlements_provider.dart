@@ -44,10 +44,16 @@ final groupSettlementsProvider =
 final groupSimplifiedDebtsProvider =
     Provider.family<List<SimplifiedDebt>, String>((ref, groupId) {
   final group = ref.watch(groupDetailProvider(groupId)).valueOrNull;
-  final expenses = ref.watch(groupExpensesProvider(groupId)).valueOrNull ?? [];
-  final settlements = ref.watch(groupSettlementsProvider(groupId)).valueOrNull ?? [];
+  final expensesAsync = ref.watch(groupExpensesProvider(groupId));
+  final settlementsAsync = ref.watch(groupSettlementsProvider(groupId));
 
+  // Don't compute with partial data: if any provider is still loading,
+  // return empty so we don't flash incorrect settlement numbers.
   if (group == null) return [];
+  if (expensesAsync.isLoading || settlementsAsync.isLoading) return [];
+
+  final expenses = expensesAsync.valueOrNull ?? [];
+  final settlements = settlementsAsync.valueOrNull ?? [];
 
   return DebtSimplifierService.calculate(
     members: group.members,

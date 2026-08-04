@@ -10,6 +10,8 @@ import 'package:easy_split/features/expenses/data/repositories/expenses_reposito
 import 'package:easy_split/features/expenses/domain/models/expense.dart';
 import 'package:easy_split/features/expenses/domain/repositories/expenses_repository.dart';
 import 'package:easy_split/features/expenses/domain/services/split_calculator.dart';
+import 'package:easy_split/features/groups/presentation/providers/groups_provider.dart';
+import 'package:easy_split/features/settlements/presentation/providers/settlements_provider.dart';
 
 // ── Repository Provider ───────────────────────────────────────────
 
@@ -240,8 +242,11 @@ class AddExpenseNotifier extends Notifier<AddExpenseState> {
       final expense =
           await ref.read(expensesRepositoryProvider).createExpense(input);
 
-      // Invalidate group expenses cache
+      // Invalidate all providers the debt simplifier depends on so the
+      // settlement summary always recomputes with fully consistent data.
       ref.invalidate(groupExpensesProvider(groupId));
+      ref.invalidate(groupSettlementsProvider(groupId));
+      ref.invalidate(groupDetailProvider(groupId));
       ref.invalidate(userExpensesProvider);
 
       state = const AddExpenseState();
@@ -295,6 +300,8 @@ class AddExpenseNotifier extends Notifier<AddExpenseState> {
           );
 
       ref.invalidate(groupExpensesProvider(groupId));
+      ref.invalidate(groupSettlementsProvider(groupId));
+      ref.invalidate(groupDetailProvider(groupId));
       ref.invalidate(userExpensesProvider);
 
       state = const AddExpenseState();
@@ -312,6 +319,8 @@ class AddExpenseNotifier extends Notifier<AddExpenseState> {
     try {
       await ref.read(expensesRepositoryProvider).deleteExpense(expenseId);
       ref.invalidate(groupExpensesProvider(groupId));
+      ref.invalidate(groupSettlementsProvider(groupId));
+      ref.invalidate(groupDetailProvider(groupId));
       ref.invalidate(userExpensesProvider);
       return true;
     } catch (e) {
