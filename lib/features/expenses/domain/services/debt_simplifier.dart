@@ -32,21 +32,40 @@ class DebtSimplifierService {
       registerUser(m.userId, m.user?.name);
     }
 
-    // 2. Calculate expense contributions & shares
+    // 2. Calculate expense contributions & shares.
+    // Instead of crediting the payer with the full expense amount and then
+    // debiting every participant's share, we compute directly:
+    //   payer credit  = sum of OTHER participants' share_amounts
+    //   non-payer debit = their own share_amount
+    // This avoids floating-point drift when share amounts don't sum exactly
+    // to the expense total (e.g., ₹2000 / 3 = 666.67 × 3 = 2000.01).
     for (final e in expenses) {
       final payerId = clean(e.paidBy);
       registerUser(e.paidBy, e.paidByUser?.name);
-      if (payerId.isNotEmpty) {
-        netBalances[payerId] = (netBalances[payerId] ?? 0.0) + e.amount;
-      }
-
+      // Credit the payer only for what OTHER participants owe him/her.
+      // This is mathematically equivalent to (e.amount - payer's own share)
+      // but uses actual stored share_amounts to avoid rounding drift.
+      double othersShares = 0.0;
       for (final p in e.participants) {
         final partId = clean(p.userId);
         registerUser(p.userId, p.user?.name);
-        if (partId.isNotEmpty) {
+        if (partId != payerId) {
+          othersShares += p.shareAmount;
+        }
+      }
+
+      if (payerId.isNotEmpty) {
+        netBalances[payerId] = (netBalances[payerId] ?? 0.0) + othersShares;
+      }
+
+      // Debit each non-payer participant for their share.
+      for (final p in e.participants) {
+        final partId = clean(p.userId);
+        if (partId.isNotEmpty && partId != payerId) {
           netBalances[partId] = (netBalances[partId] ?? 0.0) - p.shareAmount;
         }
       }
+
     }
 
     // 3. Adjust for COMPLETED settlements only (pending and rejected settlements do NOT alter net balances)

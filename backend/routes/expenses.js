@@ -200,6 +200,16 @@ router.post('/', authMiddleware, async (req, res) => {
       ? JSON.parse(participants)
       : participants;
 
+    // Validate that participant shares sum to the expense amount (within ₹0.10 tolerance)
+    const totalShares = parsedParticipants.reduce((sum, p) => {
+      return sum + parseFloat(p.share_amount !== undefined ? p.share_amount : (p.shareAmount || 0));
+    }, 0);
+    if (Math.abs(totalShares - parseFloat(amount)) > 0.10) {
+      return res.status(400).json({
+        error: `Participant shares (₹${totalShares.toFixed(2)}) must equal expense amount (₹${parseFloat(amount).toFixed(2)}). Difference: ₹${Math.abs(totalShares - parseFloat(amount)).toFixed(2)}`,
+      });
+    }
+
     for (const p of parsedParticipants) {
       const pUserId = p.user_id || p.userId;
       const pShareAmount = p.share_amount !== undefined ? p.share_amount : p.shareAmount;
