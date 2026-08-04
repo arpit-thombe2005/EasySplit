@@ -62,45 +62,4 @@ router.patch('/read-all', authMiddleware, async (req, res) => {
   }
 });
 
-// ── POST /api/notifications/broadcast-update ──────────────────────
-router.post('/broadcast-update', async (req, res) => {
-  const { secret, version, message } = req.body;
-  
-  // Basic security check (you can change this secret or pass it in .env)
-  const ADMIN_SECRET = process.env.ADMIN_SECRET || 'easysplit-admin-2026';
-  if (secret !== ADMIN_SECRET) {
-    return res.status(403).json({ error: 'Unauthorized' });
-  }
-
-  try {
-    const devices = await sql`SELECT DISTINCT user_id FROM user_devices WHERE fcm_token IS NOT NULL`;
-    
-    let successCount = 0;
-    const bodyText = message || `A new update (v${version || 'latest'}) is available! Please update EasySplit to enjoy the latest features and bug fixes.`;
-    
-    // Send to all users who have registered a device
-    for (const device of devices) {
-      try {
-        await sendPushNotification(device.user_id, {
-          title: '🚀 App Update Available!',
-          body: bodyText,
-          data: { type: 'app_update', version: version || 'latest' }
-        });
-        successCount++;
-      } catch (err) {
-        console.error(`Failed to send update push to user ${device.user_id}:`, err.message);
-      }
-    }
-    
-    return res.json({ 
-      message: 'Broadcast complete', 
-      totalUsersTargeted: devices.length,
-      successCount 
-    });
-  } catch (err) {
-    console.error('Broadcast error:', err);
-    return res.status(500).json({ error: 'Failed to broadcast update notification' });
-  }
-});
-
 export default router;
