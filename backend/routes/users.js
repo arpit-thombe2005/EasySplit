@@ -103,8 +103,8 @@ router.get('/search', authMiddleware, async (req, res) => {
 
 // ── POST /api/users/devices ───────────────────────────────────────
 router.post('/devices', authMiddleware, async (req, res) => {
-  const { fcmToken, deviceType } = req.body;
-  console.log(`📱 Received device registration request. User: ${req.user.userId}, Device: ${deviceType}, Token: ${fcmToken ? fcmToken.substring(0, 15) : 'null'}...`);
+  const { fcmToken, deviceType, appVersion } = req.body;
+  console.log(`📱 Received device registration request. User: ${req.user.userId}, Device: ${deviceType}, Version: ${appVersion}, Token: ${fcmToken ? fcmToken.substring(0, 15) : 'null'}...`);
   
   if (!fcmToken) {
     console.warn(`⚠️ Device registration failed: FCM token is missing.`);
@@ -112,13 +112,24 @@ router.post('/devices', authMiddleware, async (req, res) => {
   }
 
   try {
+    // 1. Update FCM token
     await sql`
       INSERT INTO user_devices (user_id, fcm_token, device_type)
       VALUES (${req.user.userId}, ${fcmToken}, ${deviceType || 'android'})
       ON CONFLICT (fcm_token) 
       DO UPDATE SET user_id = ${req.user.userId}, updated_at = NOW()
     `;
-    console.log(`✅ Device token registered successfully in database for user: ${req.user.userId}`);
+    
+    // 2. Update app version in users table if provided
+    if (appVersion) {
+      await sql`
+        UPDATE users 
+        SET last_login_app_version = ${appVersion}, updated_at = NOW()
+        WHERE id = ${req.user.userId}
+      `;
+    }
+    
+    console.log(`✅ Device token & version registered successfully in database for user: ${req.user.userId}`);
     return res.status(200).json({ message: 'Device token registered successfully' });
   } catch (err) {
     console.error('❌ FCM registration error:', err);

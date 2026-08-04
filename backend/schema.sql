@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
   email       VARCHAR(255) NOT NULL UNIQUE,
   avatar_id   VARCHAR(50) NOT NULL DEFAULT 'avatar_1',
   currency    VARCHAR(10) NOT NULL DEFAULT 'INR',
+  last_login_app_version VARCHAR(50),
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

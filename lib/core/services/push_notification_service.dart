@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:easy_split/core/constants/app_constants.dart';
 import 'package:easy_split/core/router/app_router.dart';
 import 'package:easy_split/features/auth/presentation/providers/auth_provider.dart';
@@ -191,10 +192,20 @@ class PushNotificationService {
       final deviceType = kIsWeb ? 'web' : (Platform.isIOS ? 'ios' : 'android');
       final api = _ref.read(apiServiceProvider);
 
-      print('🔔 FCM: Sending POST to users/devices with token = ${token.substring(0, 15)}...');
+      // Get app version
+      String appVersion = 'unknown';
+      try {
+        final packageInfo = await PackageInfo.fromPlatform();
+        appVersion = packageInfo.version;
+      } catch (e) {
+        if (kDebugMode) print("⚠️ Could not fetch package info: $e");
+      }
+
+      print('🔔 FCM: Sending POST to users/devices with token = ${token.substring(0, 15)}... version: $appVersion');
       final response = await api.post('users/devices', data: {
         'fcmToken': token,
         'deviceType': deviceType,
+        'appVersion': appVersion,
       });
 
       print("🚀 FCM: Token uploaded to backend successfully! Response: $response");
